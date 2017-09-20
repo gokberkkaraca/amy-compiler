@@ -5,7 +5,7 @@ object O extends App {
 
   def isDefined(o: Option): Boolean = {
     o match {
-      case None => false
+      case None() => false
       case _ => true
     }
   }
@@ -13,7 +13,7 @@ object O extends App {
   def get(o: Option): Int = {
     o match {
       case Some(i) => i
-      case None => error("get(None)")
+      case None() => error("get(None)")
     }
   }
 
@@ -27,14 +27,14 @@ object O extends App {
   def orElse(o1: Option, o2: Option): Option = {
     o1 match {
       case Some(_) => o1
-      case None => o2
+      case None() => o2
     }
   }
 
   def toList(o: Option): L.List = {
     o match {
       case Some(i) => L.Cons(i, L.Nil())
-      case None => L.Nil()
+      case None() => L.Nil()
     }
   }
 }
