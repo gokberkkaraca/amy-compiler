@@ -9,4 +9,6 @@ compiler/**/*.js
 compiler/node_modules
 # Vim
 *.swp
+#idea
+.idea/
 
