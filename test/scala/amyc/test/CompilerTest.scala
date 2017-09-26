@@ -55,7 +55,7 @@ class CompilerTest extends SandboxedTest {
     } catch {
       case e: PrivilegedActionException =>
         e.getException match {
-          case MscFatalError(msg) =>
+          case AmycFatalError(msg) =>
             fail(s"\n  $msg\n")
           case other =>
             throw other
@@ -74,7 +74,7 @@ class CompilerTest extends SandboxedTest {
     } catch {
       case e: PrivilegedActionException =>
         e.getException match {
-          case MscFatalError(msg) =>
+          case AmycFatalError(msg) =>
             // Ok, this is what we wanted
           case other =>
             // An error of an another kind should not be happening
