@@ -11,4 +11,5 @@ compiler/node_modules
 *.swp
 #idea
 .idea/
-
+#Amy Reference Compiler
+amyc_2.12-1.1.jar
