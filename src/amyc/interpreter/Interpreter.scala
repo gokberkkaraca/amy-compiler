@@ -154,9 +154,8 @@ object Interpreter extends Pipeline[(Program, SymbolTable), Unit] {
                 Some(List())
               case (CaseClassValue(con1, realArgs), CaseClassPattern(con2, formalArgs)) =>
                 if (con1 == con2) {
-                  val interpreterValues: List[Interpreter.Value] = realArgs.flatten
-                  val identifiers: List[Identifier] = formalArgs.flatten
-                  Some((identifiers.zip(interpreterValues)))
+                  val pairs = realArgs.zip(formalArgs)
+                  Some(pairs.flatMap(pair => matchesPattern(pair._1, pair._2)).flatten)
                 } else
                   None
             }
