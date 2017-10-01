@@ -142,7 +142,7 @@ object Interpreter extends Pipeline[(Program, SymbolTable), Unit] {
           // Note: Only works on well typed patterns (since the problem is well typed).
           def matchesPattern(v: Value, pat: Pattern): Option[List[(Identifier, Value)]] = {
             ((v, pat): @unchecked) match {
-              case (_, WildcardPattern()) => None
+              case (_, WildcardPattern()) => Some(List())
               case (_, IdPattern(name)) => Some(List(name -> v))
               case (IntValue(i1), LiteralPattern(IntLiteral(i2))) =>
                 if (i1 == i2) Some(List()) else None
@@ -151,9 +151,9 @@ object Interpreter extends Pipeline[(Program, SymbolTable), Unit] {
               case (StringValue(_), LiteralPattern(StringLiteral(_))) =>
                 None
               case (UnitValue, LiteralPattern(UnitLiteral())) =>
-                None
+                Some(List())
               case (CaseClassValue(con1, realArgs), CaseClassPattern(con2, formalArgs)) =>
-                if (con1 == con2) ??? else None
+                if (con1 == con2) None else None
             }
           }
 
