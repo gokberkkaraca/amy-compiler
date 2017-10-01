@@ -21,7 +21,7 @@ object MatchTest extends App {
     }
   }
 
-  val a = "a";
+  val a: String = "a";
 
   intTest(10);
   stringTest("a");
