@@ -84,7 +84,7 @@ object Interpreter extends Pipeline[(Program, SymbolTable), Unit] {
         case Div(lhs, rhs) =>
           IntValue(interpret(lhs).asInt / interpret(rhs).asInt)
         case Mod(lhs, rhs) =>
-          IntValue(interpret(lhs).asInt / interpret(rhs).asInt)
+          IntValue(interpret(lhs).asInt % interpret(rhs).asInt)
         case LessThan(lhs, rhs) =>
           BooleanValue(interpret(lhs).asInt < interpret(rhs).asInt)
         case LessEquals(lhs, rhs) =>
