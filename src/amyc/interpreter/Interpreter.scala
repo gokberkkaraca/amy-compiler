@@ -155,8 +155,13 @@ object Interpreter extends Pipeline[(Program, SymbolTable), Unit] {
               case (CaseClassValue(con1, realArgs), CaseClassPattern(con2, formalArgs)) =>
                 if (con1 == con2) {
                   val pairs = realArgs.zip(formalArgs)
-                  Some(pairs.flatMap(pair => matchesPattern(pair._1, pair._2)).flatten)
-                } else
+                  val list = pairs.map(pair => matchesPattern(pair._1, pair._2))
+                  if (list.contains(None))
+                    None
+                  else
+                    Some(list.flatten.flatten)
+                }
+                else
                   None
             }
           }
