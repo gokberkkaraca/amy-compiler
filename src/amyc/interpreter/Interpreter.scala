@@ -153,7 +153,12 @@ object Interpreter extends Pipeline[(Program, SymbolTable), Unit] {
               case (UnitValue, LiteralPattern(UnitLiteral())) =>
                 Some(List())
               case (CaseClassValue(con1, realArgs), CaseClassPattern(con2, formalArgs)) =>
-                if (con1 == con2) None else None
+                if (con1 == con2) {
+                  val interpreterValues: List[Interpreter.Value] = realArgs.flatten
+                  val identifiers: List[Identifier] = formalArgs.flatten
+                  Some((identifiers.zip(interpreterValues)))
+                } else
+                  None
             }
           }
 
