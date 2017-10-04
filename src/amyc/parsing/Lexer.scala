@@ -71,10 +71,17 @@ object Lexer extends Pipeline[List[File], Stream[Token]] {
         nextToken(stream.dropWhile{ case (c, _) => Character.isWhitespace(c) } )
       } else if (currentChar == '/' && nextChar == '/') {
         // Line comment
-        ??? // TODO
+        nextToken(stream.dropWhile{ case (c, _) => c != EndOfFile && c!= '\n' && c != '\r'} )
       } else if (currentChar == '/' && nextChar == '*') {
         // Multiline comment
-        ??? // TODO
+        def dropComments(currentStream: Stream[Input]): Stream[Input] = {
+          currentStream match {
+            case ('*', _) #:: ('/', _) #:: rest => rest
+            case (EndOfFile, _) => ctx.reporter.fatal("Unclosed comment", currentPos)
+            case (_, _) #:: rest => dropComments(rest)
+          }
+        }
+        nextToken(dropComments(stream))
       } else {
         readToken(stream)
       }
