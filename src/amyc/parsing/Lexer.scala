@@ -2,8 +2,10 @@ package amyc
 package parsing
 
 import utils._
+
 import scala.io.Source
 import java.io.File
+import java.security.KeyStore.LoadStoreParameter
 
 // The lexer for Amy.
 // Transforms an iterator coming from scala.io.Source to a Stream of (Char, Position),
@@ -77,7 +79,7 @@ object Lexer extends Pipeline[List[File], Stream[Token]] {
         def dropComments(currentStream: Stream[Input]): Stream[Input] = {
           currentStream match {
             case ('*', _) #:: ('/', _) #:: rest => rest
-            case (EndOfFile, _) => ctx.reporter.fatal("Unclosed comment", currentPos)
+            // TODO case (EndOfFile, _) => ctx.reporter.fatal("Unclosed comment", currentPos)
             case (_, _) #:: rest => dropComments(rest)
           }
         }
@@ -94,7 +96,6 @@ object Lexer extends Pipeline[List[File], Stream[Token]] {
       require(stream.nonEmpty)
 
       val (currentChar, currentPos) #:: rest = stream
-
       // Use with care!
       def nextChar = rest.head._1
 
@@ -107,7 +108,7 @@ object Lexer extends Pipeline[List[File], Stream[Token]] {
         case EndOfFile => useOne(EOF())
  
         // Reserved word/ Identifier
-        case _ if Character.isLetter(currentChar) =>
+        case _ if Character.isLetter(currentChar) => {
           val (wordLetters, afterWord) = stream.span { case (ch, _) =>
             Character.isLetterOrDigit(ch) || ch == '_'
           }
@@ -115,21 +116,92 @@ object Lexer extends Pipeline[List[File], Stream[Token]] {
           // Hint: Decide if it's a letter or reserved word (use our infrastructure!),
           // and return the correct token, along with the remaining input stream.
           // Make sure you set the correct position for the token.
-          ??? // TODO
-
+          val keyword = keywords(word)
+          if(keyword.isDefined)
+            (keyword.get.setPos(currentPos), afterWord)
+          else {
+            (ID(word).setPos(currentPos), afterWord)
+          }
+        }
         // Int literal
-        case _ if Character.isDigit(currentChar) =>
+        case _ if Character.isDigit(currentChar) => {
           // Hint: Use a strategy similar to the previous example.
           // Make sure you fail for integers that do not fit 32 bits.
-          ??? // TODO
+
+          val (numberDigits, afterNumber) = stream.span { case (ch, _) =>
+            Character.isDigit(ch)
+          }
+          val number = numberDigits.map(_._1).mkString.toInt
+          if (number <= Integer.MAX_VALUE && number >= Integer.MIN_VALUE){
+            (INTLIT(number).setPos(currentPos), afterNumber)
+          }
+          else{
+            ctx.reporter.error("Obtained number is not a valid integer")
+            (BAD().setPos(currentPos), afterNumber)
+          }
+        }
 
         // String Literal
-        case '"' =>
-          ??? // TODO
+        case '"' => {
+          val (strCharacters, afterStrCharacters) = rest.span { case (ch, _) =>
+              ch != '"'
+          }
+          val str = strCharacters.map(_._1).mkString
+          (STRINGLIT(str).setPos(currentPos), afterStrCharacters.drop(1))
+        }
+
+        /* Operators */
+        case ';' => useOne(SEMICOLON())
+        case '+' =>
+          if (nextChar == '+')
+            useTwo(CONCAT())
+          else
+            useOne(PLUS())
+        case '-' => useOne(MINUS())
+        case '*' => useOne(TIMES())
+        case '/' => useOne(DIV())
+        case '%' => useOne(MOD())
+        case '<' =>
+          if (nextChar == '=')
+            useTwo(LESSEQUALS())
+          else
+            useOne(LESSTHAN())
+        case '|' =>
+          if (nextChar == '|')
+            useTwo(OR())
+          else {
+            ctx.reporter.error("Bad token", currentPos)
+            (BAD().setPos(currentPos), rest)
+          }
+        case '&' =>
+          if (nextChar == '&')
+            useTwo(AND())
+          else{
+            ctx.reporter.error("Bad token", currentPos)
+            (BAD().setPos(currentPos), rest)
+          }
+        case '!' => useOne(BANG())
+
+        /* Delimiters and wildcard */
+        case '{' => useOne(LBRACE())
+        case '}' => useOne(RBRACE())
+        case '(' => useOne(LPAREN())
+        case ')' => useOne(RPAREN())
+        case ',' => useOne(COMMA())
+        case ':' => useOne(COLON())
+        case '.' => useOne(DOT())
+        case '=' =>
+          if (nextChar == '>')
+            useTwo(RARROW())
+          else if (nextChar == '=')
+            useTwo(EQUALS())
+          else
+            useOne(EQSIGN())
+        case '_' => useOne(UNDERSCORE())
 
         case _ =>
-          ??? // TODO: Remove this catch-all cand complete the rest of the cases
-              // There should be a case for all remaining (invalid) characters in the end
+          ctx.reporter.error("Bad token", currentPos)
+          (BAD().setPos(currentPos), rest)
       }
     }
 
