@@ -5,7 +5,6 @@ import utils._
 
 import scala.io.Source
 import java.io.File
-import java.security.KeyStore.LoadStoreParameter
 
 // The lexer for Amy.
 // Transforms an iterator coming from scala.io.Source to a Stream of (Char, Position),
@@ -79,7 +78,7 @@ object Lexer extends Pipeline[List[File], Stream[Token]] {
         def dropComments(currentStream: Stream[Input]): Stream[Input] = {
           currentStream match {
             case ('*', _) #:: ('/', _) #:: rest => rest
-            // TODO case (EndOfFile, _) => ctx.reporter.fatal("Unclosed comment", currentPos)
+            case (EndOfFile, _) #:: rest => ctx.reporter.fatal("Unclosed comment", currentPos)
             case (_, _) #:: rest => dropComments(rest)
           }
         }
@@ -131,13 +130,13 @@ object Lexer extends Pipeline[List[File], Stream[Token]] {
           val (numberDigits, afterNumber) = stream.span { case (ch, _) =>
             Character.isDigit(ch)
           }
-          val number = numberDigits.map(_._1).mkString.toInt
-          if (number <= Integer.MAX_VALUE && number >= Integer.MIN_VALUE){
+          try {
+            val number = numberDigits.map(_._1).mkString.toInt
             (INTLIT(number).setPos(currentPos), afterNumber)
-          }
-          else{
-            ctx.reporter.error("Obtained number is not a valid integer")
-            (BAD().setPos(currentPos), afterNumber)
+          } catch {
+            case e: Exception =>
+              ctx.reporter.error("Obtained number is not a valid integer")
+              (BAD().setPos(currentPos), afterNumber)
           }
         }
 
@@ -147,6 +146,10 @@ object Lexer extends Pipeline[List[File], Stream[Token]] {
               ch != '"'
           }
           val str = strCharacters.map(_._1).mkString
+          if(str.charAt(str.length - 1) == EndOfFile) {
+            ctx.reporter.fatal("Unclosed string literal", currentPos)
+            (BAD().setPos(currentPos), afterStrCharacters)
+          }
           (STRINGLIT(str).setPos(currentPos), afterStrCharacters.drop(1))
         }
 
