@@ -146,7 +146,7 @@ object Lexer extends Pipeline[List[File], Stream[Token]] {
               ch != '"'
           }
           val str = strCharacters.map(_._1).mkString
-          if(str.charAt(str.length - 1) == EndOfFile) {
+          if(str.isEmpty || str.charAt(str.length - 1) == EndOfFile) {
             ctx.reporter.fatal("Unclosed string literal", currentPos)
             (BAD().setPos(currentPos), afterStrCharacters)
           }
