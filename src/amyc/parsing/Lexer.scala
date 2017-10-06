@@ -146,9 +146,11 @@ object Lexer extends Pipeline[List[File], Stream[Token]] {
               ch != '"'
           }
           val str = strCharacters.map(_._1).mkString
-          if(!str.isEmpty && (str.charAt(str.length - 1) == EndOfFile || str.contains('\n') || str.contains('\r'))) {
-            ctx.reporter.fatal("Unclosed string literal", currentPos)
-            (BAD().setPos(currentPos), afterStrCharacters)
+          if(!str.isEmpty) {
+            if (str.contains(EndOfFile) || str.contains('\n') || str.contains('\r')) {
+              ctx.reporter.fatal("Unclosed string literal", currentPos)
+              (BAD().setPos(currentPos), afterStrCharacters)
+            }
           }
           (STRINGLIT(str).setPos(currentPos), afterStrCharacters.drop(1))
         }
