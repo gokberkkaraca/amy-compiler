@@ -12,23 +12,22 @@ trait Printer {
   implicit def printName(name: Name)(implicit printUniqueIds: Boolean): Document
   implicit def printQName(name: QualifiedName)(implicit printUniqueIds: Boolean): Document
 
-
   protected implicit def stringToDoc(s: String): Raw = Raw(s)
 
   def apply(t: Tree)(implicit printUniqueIDs: Boolean = false): String = {
 
     def binOp(e1: Expr, op: String, e2: Expr) = "(" <:> rec(e1) <:> " " + op + " " <:> rec(e2) <:> ")"
 
-    def rec(t: Tree): Document = t match {
+    def rec(t: Tree, parens: Boolean = true): Document = t match {
       /* Definitions */
       case Program(modules) =>
-        Stacked(modules map rec, emptyLines = true)
+        Stacked(modules map (rec(_)), emptyLines = true)
 
       case ModuleDef(name, defs, optExpr) =>
         Stacked(
           "object " <:> name <:> " extends App {",
           "",
-          Indented(Stacked(defs ++ optExpr.toList map rec, emptyLines = true)),
+          Indented(Stacked(defs ++ optExpr.toList map (rec(_, false)), emptyLines = true)),
           "}",
           ""
         )
@@ -37,12 +36,13 @@ trait Printer {
         "abstract class " <:> printName(name)
 
       case CaseClassDef(name, fields, parent) =>
-        "case class " <:> name <:> "(" <:> Lined(fields map rec, ", ") <:> ") extends " <:> parent
+        def printField(f: TypeTree) = "v: " <:> rec(f)
+        "case class " <:> name <:> "(" <:> Lined(fields map printField, ", ") <:> ") extends " <:> parent
 
       case FunDef(name, params, retType, body) =>
         Stacked(
-          "def " <:> name <:> "(" <:> Lined(params map rec, ", ") <:> "): " <:> rec(retType) <:> " = {",
-          Indented(rec(body)),
+          "def " <:> name <:> "(" <:> Lined(params map (rec(_)), ", ") <:> "): " <:> rec(retType) <:> " = {",
+          Indented(rec(body, false)),
           "}"
         )
 
@@ -87,31 +87,48 @@ trait Printer {
       case Neg(e) =>
         "-(" <:> rec(e) <:> ")"
       case Call(name, args) =>
-        name <:> "(" <:> Lined(args map rec, ", ") <:> ")"
+        name <:> "(" <:> Lined(args map (rec(_)), ", ") <:> ")"
       case Sequence(lhs, rhs) =>
-        Stacked(
-          rec(lhs) <:> ";",
-          rec(rhs)
+        val main = Stacked(
+          rec(lhs, false) <:> ";",
+          rec(rhs, false),
         )
+        if (parens) {
+          Stacked(
+            "(",
+            Indented(main),
+            ")"
+          )
+        } else {
+          main
+        }
       case Let(df, value, body) =>
-        Stacked(
-          "val " <:> rec(df) <:> " = (",
-          Indented(rec(value)),
-          ");",
-          Indented(rec(body)) // For demonstration purposes, the scope or df is indented
+        val main = Stacked(
+          "val " <:> rec(df) <:> " =",
+          Indented(rec(value)) <:> ";",
+          rec(body, false) // For demonstration purposes, the scope or df is indented
         )
+        if (parens) {
+          Stacked(
+            "(",
+            Indented(main),
+            ")"
+          )
+        } else {
+          main
+        }
       case Ite(cond, thenn, elze) =>
         Stacked(
-          "if(" <:> rec(cond) <:> ") {",
+          "(if(" <:> rec(cond) <:> ") {",
           Indented(rec(thenn)),
           "} else {",
           Indented(rec(elze)),
-          "}"
+          "})"
         )
       case Match(scrut, cases) =>
         Stacked(
           rec(scrut) <:> " match {",
-          Indented(Stacked(cases map rec)),
+          Indented(Stacked(cases map (rec(_)))),
           "}"
         )
       case Error(msg) =>
@@ -130,7 +147,7 @@ trait Printer {
       case LiteralPattern(lit) =>
         rec(lit)
       case CaseClassPattern(name, args) =>
-        name <:> "(" <:> Lined(args map rec, ", ") <:> ")"
+        name <:> "(" <:> Lined(args map (rec(_)), ", ") <:> ")"
 
       /* Types */
       case TypeTree(tp) =>
