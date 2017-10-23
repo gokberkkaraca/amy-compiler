@@ -3,7 +3,7 @@ package amyc
 import utils._
 import parsing._
 import ast._
-import analyzer.SymbolTable
+import analyzer._
 
 import java.io.File
 
@@ -14,7 +14,11 @@ object Main extends MainHelpers {
 
   def main(args: Array[String]): Unit = {
     val ctx = parseArgs(args)
-    val pipeline = Lexer andThen Parser andThen treePrinterN("Trees after parsing")
+    val pipeline =
+      Lexer andThen
+      Parser andThen
+      NameAnalyzer andThen
+      treePrinterS("Trees after name analysis")
 
     val files = ctx.files.map(new File(_))
 
