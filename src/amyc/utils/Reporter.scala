@@ -57,10 +57,10 @@ class Reporter {
       val lines = getLines(pos.file)
 
       if (pos.line > 0 && pos.line-1 < lines.size) {
-        err(lines(pos.line-1))
-        err(" "*(pos.col - 1)+"^")
+        err(s"$prefix ${lines(pos.line-1)}")
+        err(prefix + " " + " "*(pos.col - 1)+"^")
       } else {
-        err("<line unavailable in source file>")
+        err(s"$prefix <line unavailable in source file>")
       }
     } else {
       err(s"$prefix $msg")
