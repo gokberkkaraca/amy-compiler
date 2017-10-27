@@ -12,7 +12,52 @@ import Tokens._
 // You should override whatever has changed.
 // Make sure to use ASTConstructor as an example
 class ASTConstructorLL1 extends ASTConstructor {
-  // TODO
+
+  override def constructQname(pTree: NodeOrLeaf[Token]): (QualifiedName, Positioned) = {
+    pTree match {
+      case Node('QName ::= _, List(id)) =>
+        val (name, pos) = constructName(id)
+        (QualifiedName(None, name), pos)
+      case Node('QName ::= _, List(id, qnameseq)) =>
+        val (module, pos) = constructName(id)
+        val name = constructQnameSeq(qnameseq)
+        (QualifiedName(Some(module), name), pos)
+    }
+  }
+
+  def constructQnameSeq(pTree: NodeOrLeaf[Token]): String ={
+    pTree match {
+      case Node('QNameSeq ::= _, List(_, id)) =>
+        val (name, _) = constructName(id)
+        name
+    }
+  }
+
+  override def constructPattern(pTree: NodeOrLeaf[Token]): Pattern = {
+    pTree match {
+      case Node('Pattern ::= List(UNDERSCORE()), List(Leaf(ut))) =>
+        WildcardPattern().setPos(ut)
+      case Node('Pattern ::= List('Literal), List(lit)) =>
+        val literal = constructLiteral(lit)
+        LiteralPattern(literal).setPos(literal)
+      case Node('Pattern ::= List('Id), List(id)) =>
+        val (name, pos) = constructName(id)
+        IdPattern(name).setPos(pos)
+      case Node('Pattern ::= _, List(id, patternseq)) =>
+        val (module, pos) = constructName(id)
+        val (name, patterns) = constructPatternSeq(patternseq)
+        CaseClassPattern(QualifiedName(Some(module), name), patterns).setPos(pos)
+    }
+  }
+
+  def constructPatternSeq(pTree: NodeOrLeaf[Token]): (String, List[Pattern]) = {
+    pTree match {
+      case Node('PatternSeq ::= _, List(qn, _, patts, _)) =>
+        val qname = constructQnameSeq(qn)
+        val patterns = constructList(patterns, constructPattern, hasComma = true)
+        (qname, patterns)
+    }
+  }
 
   // Important helper method:
   // Because LL1 grammar is not helpful in implementing left associativity,
