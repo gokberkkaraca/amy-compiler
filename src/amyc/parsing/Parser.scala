@@ -76,7 +76,7 @@ object Parser extends Pipeline[Stream[Token], Program] {
 
     'ExprHelper ::= SEMICOLON() ~ 'Expr | epsilon(),
 
-    'Expr ::= VAL() ~ 'Id ~ EQSIGN() ~ 'Expr2 ~ SEMICOLON() ~ 'Expr | 'Expr2 ~ 'ExprHelper,
+    'Expr ::= VAL() ~ 'Param ~ EQSIGN() ~ 'Expr2 ~ SEMICOLON() ~ 'Expr | 'Expr2 ~ 'ExprHelper,
 
     'Expr2 ::= 'Expr3 ~ 'ExprSeq2,
     'ExprSeq2 ::= MATCH() ~ LBRACE() ~ 'Cases ~ RBRACE() | epsilon(),
@@ -123,7 +123,6 @@ object Parser extends Pipeline[Stream[Token], Program] {
     ))
 
   def run(ctx: Context)(tokens: Stream[Token]): Program = {
-    // TODO: Switch to LL1 when done
     val (grammar, constructor) = (amyGrammarLL1, new ASTConstructorLL1)
     //val (grammar, constructor) = (amyGrammar, new ASTConstructor)
 
