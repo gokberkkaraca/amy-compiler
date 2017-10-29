@@ -16,10 +16,16 @@ class ASTConstructorLL1 extends ASTConstructor {
   override def constructQname(pTree: NodeOrLeaf[Token]): (QualifiedName, Positioned) = {
     pTree match {
       case Node('QName ::= _, List(id, qnameseq)) =>
-        val (module, pos) = constructName(id)
-        val (isQNameSeqEpsilon, name) = constructQNameSeq(qnameseq)
-        if(isQNameSeqEpsilon) (QualifiedName(None, name), pos)
-        else (QualifiedName(Some(module), name), pos)
+        val (isQNameSeqEpsilon, qnameid) = constructQNameSeq(qnameseq)
+
+        if(isQNameSeqEpsilon){
+          val (name, pos) = constructName(id)
+          (QualifiedName(None, name), pos)
+        }
+        else {
+          val (module, pos) = constructName(id)
+          (QualifiedName(Some(module), qnameid), pos)
+        }
     }
   }
 
