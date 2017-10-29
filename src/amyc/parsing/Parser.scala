@@ -54,7 +54,6 @@ object Parser extends Pipeline[Stream[Token], Program] {
     'Id ::= IDSENT
   ))
 
-  // TODO: Write a grammar that implements the correct syntax of Amy and is LL1.
   // You can start from the example and work your way from there.
   // Make sure you use the warning that tells you which part is not in LL1
   val amyGrammarLL1 = Grammar('Program, List[Rules[Token]](
