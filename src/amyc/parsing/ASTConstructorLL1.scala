@@ -136,9 +136,28 @@ class ASTConstructorLL1 extends ASTConstructor {
 
   def constructExpr10(ptree: NodeOrLeaf[Token]): Expr = {
     ptree match {
+
+      // 'Id ~ 'QNameHelper
       case Node('Expr10 ::= List('Id), List(id)) =>
         val (name, pos) = constructName(id)
         Variable(name).setPos(pos)
+      case Node('Expr10 ::= List('Id, _), List(id, qnamehelper)) =>
+        val (module, pos) = constructName(id)
+        val (name, args) = constructQNameHelper(qnamehelper)
+        val qname = QualifiedName(Some(module), name)
+        Call(qname, args).setPos(pos)
+    }
+  }
+
+  def constructQNameHelper(ptree: NodeOrLeaf[Token]) = (String, List[Expr]) {
+    ptree match {
+      case Node('QNameHelper ::= List(LPAREN(), _), List(_, as,_)) =>
+        val args = constructList(as, constructExpr, hasComma = true)
+        (None, args)
+      case Node('QNameHelper ::= _, List(qnameseq, _, as, _)) =>
+        val name = constructQnameSeq(qnameseq)
+        val args = constructList(as, constructExpr, hasComma = true)
+        (name, args)
     }
   }
 
