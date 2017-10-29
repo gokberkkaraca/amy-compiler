@@ -15,21 +15,20 @@ class ASTConstructorLL1 extends ASTConstructor {
 
   override def constructQname(pTree: NodeOrLeaf[Token]): (QualifiedName, Positioned) = {
     pTree match {
-      case Node('QName ::= _, List(id)) =>
-        val (name, pos) = constructName(id)
-        (QualifiedName(None, name), pos)
       case Node('QName ::= _, List(id, qnameseq)) =>
         val (module, pos) = constructName(id)
-        val name = constructQNameSeq(qnameseq)
-        (QualifiedName(Some(module), name), pos)
+        val (isQNameSeqEpsilon, name) = constructQNameSeq(qnameseq)
+        if(isQNameSeqEpsilon) (QualifiedName(None, name), pos)
+        else (QualifiedName(Some(module), name), pos)
     }
   }
 
-  def constructQNameSeq(pTree: NodeOrLeaf[Token]): String ={
+  def constructQNameSeq(pTree: NodeOrLeaf[Token]): (Boolean, String) = {
     pTree match {
       case Node('QNameSeq ::= _, List(_, id)) =>
         val (name, _) = constructName(id)
-        name
+        (false, name)
+      case _ => (true, null) // epsilon case
     }
   }
 
@@ -38,36 +37,42 @@ class ASTConstructorLL1 extends ASTConstructor {
       case Node('Expr ::= _, List(Leaf(vt), param, _, expr2, _, expr)) =>
         Let(constructParam(param), constructExpr2(expr2), constructExpr(expr))
       case Node('Expr ::= _, List(expr2, exprhelper)) =>
-        val part1 = constructExpr2(expr2)
-        val part2 = constructExprHelper(exprhelper)
-        Sequence(part1, part2).setPos(part1)
-      case Node('Expr ::= _, List(expr2)) =>
-        constructExpr2(expr2)
+        val (isExprHelperEpsilon, part2) = constructExprHelper(exprhelper)
+
+        if(isExprHelperEpsilon) constructExpr2(expr2)
+        else {
+          val part1 = constructExpr2(expr2)
+          Sequence(part1, part2).setPos(part1)
+        }
     }
   }
 
-  def constructExprHelper(ptree: NodeOrLeaf[Token]): Expr = {
+  def constructExprHelper(ptree: NodeOrLeaf[Token]): (Boolean, Expr) = {
     ptree match {
       case Node('ExprHelper ::= _, List(_, expr)) =>
-        constructExpr(expr)
+        (false, constructExpr(expr))
+      case _ => (true, null)
     }
   }
 
   def constructExpr2(ptree: NodeOrLeaf[Token]): Expr = {
     ptree match {
       case Node('Expr2 ::= _, List(expr3, exprseq2)) =>
-        val scrut = constructExpr3(expr3)
-        val cases = constructExprSeq2(exprseq2)
-        Match(scrut, constructList1(cases, constructCase))
-      case Node('Expr2 ::= _, List(expr3)) =>
-        constructExpr3(expr3)
+        val (isExprSeq2Epsilon, cases) = constructExprSeq2(exprseq2)
+
+        if(isExprSeq2Epsilon) constructExpr3(expr3)
+        else {
+          val scrut = constructExpr3(expr3)
+          Match(scrut, constructList1(cases, constructCase))
+        }
     }
   }
 
-  def constructExprSeq2(ptree: NodeOrLeaf[Token]): NodeOrLeaf[Token] = {
+  def constructExprSeq2(ptree: NodeOrLeaf[Token]): (Boolean, NodeOrLeaf[Token]) = {
     ptree match {
       case Node('ExprSeq2 ::= _, List(_, _, cases, _)) =>
-        cases
+        (false, cases)
+      case _ => (true, null) // epsilon case
     }
   }
 
@@ -140,14 +145,24 @@ class ASTConstructorLL1 extends ASTConstructor {
     ptree match {
 
       // 'Id ~ 'QNameHelper
-      case Node('Expr10 ::= List('Id), List(id)) =>
-        val (name, pos) = constructName(id)
-        Variable(name).setPos(pos)
       case Node('Expr10 ::= List('Id, _), List(id, qnamehelper)) =>
-        val (module, pos) = constructName(id)
-        val (name, args) = constructQNameHelper(qnamehelper)
-        val qname = QualifiedName(Some(module), name.get)
-        Call(qname, args).setPos(pos)
+        val (isQNameSeqEpsilon, isQNameHelperEpsilon, qnameid, args) = constructQNameHelper(qnamehelper)
+        if(isQNameHelperEpsilon) {
+          val (name, pos) = constructName(id)
+          Variable(name).setPos(pos)
+        }
+        else {
+          if(isQNameSeqEpsilon) {
+            val (name, pos) = constructName(id)
+            val qname = QualifiedName(None, name)
+            Call(qname, args)
+          }
+          else {
+            val (module, pos) = constructName(id)
+            val qname = QualifiedName(Some(module), qnameid.get)
+            Call(qname, args)
+          }
+        }
 
       // LiteralNoParen
       case Node('Expr10 ::= List('LiteralNoParen), List(lit)) =>
@@ -173,15 +188,24 @@ class ASTConstructorLL1 extends ASTConstructor {
     }
   }
 
-  def constructQNameHelper(ptree: NodeOrLeaf[Token]): (Option[String], List[Expr]) = {
+  def constructQNameHelper(ptree: NodeOrLeaf[Token]): (Boolean, Boolean, Option[String], List[Expr]) = {
     ptree match {
-      case Node('QNameHelper ::= List(LPAREN(), _), List(_, as,_)) =>
-        val args = constructList(as, constructExpr, hasComma = true)
-        (None, args)
       case Node('QNameHelper ::= _, List(qnameseq, _, as, _)) =>
-        val name = constructQNameSeq(qnameseq)
-        val args = constructList(as, constructExpr, hasComma = true)
-        (Some(name), args)
+        val (isQNameSeqEpsilon, name) = constructQNameSeq(qnameseq)
+
+        if(isQNameSeqEpsilon) {
+          val isQNameHelperEpsilon = false
+          val args = constructList(as, constructExpr, hasComma = true)
+          (isQNameSeqEpsilon, isQNameHelperEpsilon, None, args)
+        }
+        else {
+          val isQNameHelperEpsilon = false
+          val args = constructList(as, constructExpr, hasComma = true)
+
+          if (isQNameSeqEpsilon) (isQNameSeqEpsilon, isQNameHelperEpsilon, None, args)
+          else (isQNameSeqEpsilon, isQNameHelperEpsilon, Some(name), args)
+        }
+      case _ => (true, true, null, null)
     }
   }
 
@@ -209,6 +233,8 @@ class ASTConstructorLL1 extends ASTConstructor {
     }
   }
 
+  // TODO Implement pattern by returning boolean for epsilon case
+/*
   override def constructPattern(pTree: NodeOrLeaf[Token]): Pattern = {
     pTree match {
       case Node('Pattern ::= List(UNDERSCORE()), List(Leaf(ut))) =>
@@ -235,6 +261,7 @@ class ASTConstructorLL1 extends ASTConstructor {
         (qname, patterns)
     }
   }
+*/
 
   // Important helper method:
   // Because LL1 grammar is not helpful in implementing left associativity,
