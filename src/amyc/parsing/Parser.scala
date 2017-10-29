@@ -73,9 +73,8 @@ object Parser extends Pipeline[Stream[Token], Program] {
     'QName ::= 'Id ~ 'QNameSeq,
     'QNameSeq ::= epsilon() | DOT() ~ 'Id,
 
-    'ExprHelper ::= SEMICOLON() ~ 'Expr | epsilon(),
-
-    'Expr ::= VAL() ~ 'Param ~ EQSIGN() ~ 'Expr2 ~ SEMICOLON() ~ 'Expr | 'Expr2 ~ 'ExprHelper,
+    'Expr ::= VAL() ~ 'Param ~ EQSIGN() ~ 'Expr2 ~ SEMICOLON() ~ 'Expr | 'Expr2 ~ 'ExprSeq,
+    'ExprSeq ::= SEMICOLON() ~ 'Expr | epsilon(),
 
     'Expr2 ::= 'Expr3 ~ 'ExprSeq2,
     'ExprSeq2 ::= MATCH() ~ LBRACE() ~ 'Cases ~ RBRACE() | epsilon(),

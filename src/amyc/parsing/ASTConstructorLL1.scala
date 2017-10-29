@@ -36,10 +36,10 @@ class ASTConstructorLL1 extends ASTConstructor {
     ptree match {
       case Node('Expr ::= _, List(Leaf(vt), param, _, expr2, _, expr)) =>
         Let(constructParam(param), constructExpr2(expr2), constructExpr(expr))
-      case Node('Expr ::= _, List(expr2, exprhelper)) =>
-        val (isExprHelperEpsilon, part2) = constructExprHelper(exprhelper)
+      case Node('Expr ::= _, List(expr2, exprSeq)) =>
+        val (isExprSeqEpsilon, part2) = constructExprSeq(exprSeq)
 
-        if(isExprHelperEpsilon) constructExpr2(expr2)
+        if(isExprSeqEpsilon) constructExpr2(expr2)
         else {
           val part1 = constructExpr2(expr2)
           Sequence(part1, part2).setPos(part1)
@@ -47,9 +47,9 @@ class ASTConstructorLL1 extends ASTConstructor {
     }
   }
 
-  def constructExprHelper(ptree: NodeOrLeaf[Token]): (Boolean, Expr) = {
+  def constructExprSeq(ptree: NodeOrLeaf[Token]): (Boolean, Expr) = {
     ptree match {
-      case Node('ExprHelper ::= _, List(_, expr)) =>
+      case Node('ExprSeq ::= _, List(_, expr)) =>
         (false, constructExpr(expr))
       case _ => (true, null)
     }
@@ -233,8 +233,6 @@ class ASTConstructorLL1 extends ASTConstructor {
     }
   }
 
-  // TODO Implement pattern by returning boolean for epsilon case
-/*
   override def constructPattern(pTree: NodeOrLeaf[Token]): Pattern = {
     pTree match {
       case Node('Pattern ::= List(UNDERSCORE()), List(Leaf(ut))) =>
@@ -246,22 +244,44 @@ class ASTConstructorLL1 extends ASTConstructor {
         val (name, pos) = constructName(id)
         IdPattern(name).setPos(pos)
       case Node('Pattern ::= _, List(id, patternseq)) =>
-        val (module, pos) = constructName(id)
-        val (name, patterns) = constructPatternSeq(patternseq)
-        CaseClassPattern(QualifiedName(Some(module), name), patterns).setPos(pos)
+        val (isQNameSeqEpsilon, isPatternSeqEpsilon, module, patterns) = constructPatternSeq(patternseq)
+
+        if(isPatternSeqEpsilon) {
+          val (name, pos) = constructName(id)
+          IdPattern(name).setPos(pos)
+        }
+        else {
+          if(isQNameSeqEpsilon){
+            val (name, pos) = constructName(id)
+            val qname = QualifiedName(None, name)
+            CaseClassPattern(qname, patterns).setPos(pos)
+          }
+          else {
+            val (name, pos) = constructName(id)
+            val qname = QualifiedName(Some(module), name)
+            CaseClassPattern(qname, patterns).setPos(pos)
+          }
+        }
     }
   }
 
 
-  def constructPatternSeq(pTree: NodeOrLeaf[Token]): (String, List[Pattern]) = {
+  def constructPatternSeq(pTree: NodeOrLeaf[Token]): (Boolean, Boolean, String, List[Pattern]) = {
     pTree match {
-      case Node('PatternSeq ::= _, List(qn, _, patts, _)) =>
-        val qname = constructQNameSeq(qn)
-        val patterns = constructList(patts, constructPattern, hasComma = true)
-        (qname, patterns)
+      case Node('PatternSeq ::= _, List(qnseq, _, patts, _)) =>
+        val (isQNameSeqEpsilon, qnameseq) = constructQNameSeq(qnseq)
+
+        if(isQNameSeqEpsilon){
+          val patterns = constructList(patts, constructPattern, hasComma = true)
+          (false, false, null, patterns)
+        }
+        else {
+          val patterns = constructList(patts, constructPattern, hasComma = true)
+          (true, false, qnameseq, patterns)
+        }
+      case _ => (true, true, null, null)
     }
   }
-*/
 
   // Important helper method:
   // Because LL1 grammar is not helpful in implementing left associativity,
