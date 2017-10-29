@@ -54,7 +54,21 @@ class ASTConstructorLL1 extends ASTConstructor {
   }
 
   def constructExpr2(ptree: NodeOrLeaf[Token]): Expr = {
+    ptree match {
+      case Node('Expr2 ::= _, List(expr3, exprseq2)) =>
+        val scrut = constructExpr3(expr3)
+        val cases = constructExprSeq2(exprseq2)
+        Match(scrut, constructList1(cases, constructCase))
+      case Node('Expr2 ::= _, List(expr3)) =>
+        constructExpr3(expr3)
+    }
+  }
 
+  def constructExprSeq2(ptree: NodeOrLeaf[Token]): NodeOrLeaf[Token] = {
+    ptree match {
+      case Node('ExprSeq2 ::= _, List(_, _, cases, _)) =>
+        cases
+    }
   }
 
   def constructExpr3(ptree: NodeOrLeaf[Token]): Expr = {
