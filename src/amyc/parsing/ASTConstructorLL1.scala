@@ -246,9 +246,7 @@ class ASTConstructorLL1 extends ASTConstructor {
   def constructLParenHelper(ptree: NodeOrLeaf[Token]): (Boolean, Expr) ={
     ptree match {
       case Node('LParenHelper ::= List(RPAREN()), List(_)) =>
-        // TODO check if this is correct
-        val expr: Expr = null
-        (true, expr)
+        (true, null)
       case Node('LParenHelper ::= _, List(expr, _)) =>
         (false, constructExpr(expr))
     }
@@ -265,7 +263,7 @@ class ASTConstructorLL1 extends ASTConstructor {
         val (name, pos) = constructName(id)
         IdPattern(name).setPos(pos)
       case Node('Pattern ::= _, List(id, patternseq)) =>
-        val (isQNameSeqEpsilon, isPatternSeqEpsilon, module, patterns) = constructPatternSeq(patternseq)
+        val (isQNameSeqEpsilon, isPatternSeqEpsilon, qnameid, patterns) = constructPatternSeq(patternseq)
 
         if(isPatternSeqEpsilon) {
           val (name, pos) = constructName(id)
@@ -278,8 +276,8 @@ class ASTConstructorLL1 extends ASTConstructor {
             CaseClassPattern(qname, patterns).setPos(pos)
           }
           else {
-            val (name, pos) = constructName(id)
-            val qname = QualifiedName(Some(module), name)
+            val (module, pos) = constructName(id)
+            val qname = QualifiedName(Some(module), qnameid)
             CaseClassPattern(qname, patterns).setPos(pos)
           }
         }
@@ -290,15 +288,15 @@ class ASTConstructorLL1 extends ASTConstructor {
   def constructPatternSeq(pTree: NodeOrLeaf[Token]): (Boolean, Boolean, String, List[Pattern]) = {
     pTree match {
       case Node('PatternSeq ::= _, List(qnseq, _, patts, _)) =>
-        val (isQNameSeqEpsilon, qnameseq) = constructQNameSeq(qnseq)
+        val (isQNameSeqEpsilon, qnameid) = constructQNameSeq(qnseq)
 
         if(isQNameSeqEpsilon){
           val patterns = constructList(patts, constructPattern, hasComma = true)
-          (false, false, null, patterns)
+          (true, false, null, patterns)
         }
         else {
           val patterns = constructList(patts, constructPattern, hasComma = true)
-          (true, false, qnameseq, patterns)
+          (false, false, qnameid, patterns)
         }
       case _ => (true, true, null, null)
     }
