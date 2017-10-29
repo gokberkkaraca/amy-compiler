@@ -63,8 +63,23 @@ class ASTConstructorLL1 extends ASTConstructor {
         if(isExprSeq2Epsilon) constructExpr3(expr3)
         else {
           val scrut = constructExpr3(expr3)
-          Match(scrut, constructList1(cases, constructCase))
+          Match(scrut, constructCases(cases))
         }
+    }
+  }
+
+  def constructCases(ptree: NodeOrLeaf[Token]): List[MatchCase] = {
+    ptree match {
+      case Node('Cases ::= _, List(cs, caseseq)) =>
+        val cases = constructCaseSeq(caseseq)
+        constructCase(cs) :: constructCaseSeq(caseseq)
+    }
+  }
+
+  def constructCaseSeq(ptree: NodeOrLeaf[Token]): List[MatchCase] = {
+    ptree match {
+      case Node('CasesSeq ::= ('Cases :: Nil), List(cases)) => constructCases(cases)
+      case Node('CasesSeq ::= _, _) => Nil // epsilon case
     }
   }
 
