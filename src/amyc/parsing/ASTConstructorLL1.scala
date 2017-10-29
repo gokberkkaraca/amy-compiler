@@ -74,56 +74,72 @@ class ASTConstructorLL1 extends ASTConstructor {
   def constructExpr3(ptree: NodeOrLeaf[Token]): Expr = {
     ptree match {
       case Node('Expr3 ::= _, List(expr4, exprseq3)) =>
+        constructOpExpr(constructExpr4(expr4), exprseq3)
       case Node('Expr3 ::= _, List(expr4)) =>
+        constructExpr4(expr4)
     }
   }
 
   def constructExpr4(ptree: NodeOrLeaf[Token]): Expr = {
     ptree match {
       case Node('Expr4 ::= _, List(expr5, exprseq4)) =>
+        constructOpExpr(constructExpr5(expr5), exprseq4)
       case Node('Expr4 ::= _, List(expr5)) =>
+        constructExpr5(expr5)
     }
   }
 
   def constructExpr5(ptree: NodeOrLeaf[Token]): Expr = {
     ptree match {
       case Node('Expr5 ::= _, List(expr6, exprseq5)) =>
+        constructOpExpr(constructExpr6(expr6), exprseq5)
       case Node('Expr5 ::= _, List(expr6)) =>
+        constructExpr6(expr6)
     }
   }
 
   def constructExpr6(ptree: NodeOrLeaf[Token]): Expr = {
     ptree match {
       case Node('Expr6 ::= _, List(expr7, exprseq6)) =>
+        constructOpExpr(constructExpr7(expr7), exprseq6)
       case Node('Expr6 ::= _, List(expr7)) =>
+        constructExpr7(expr7)
     }
   }
 
   def constructExpr7(ptree: NodeOrLeaf[Token]): Expr = {
     ptree match {
       case Node('Expr7 ::= _, List(expr8, exprseq7)) =>
+        constructOpExpr(constructExpr8(expr8), exprseq7)
       case Node('Expr7 ::= _, List(expr8)) =>
+        constructExpr8(expr8)
     }
   }
 
   def constructExpr8(ptree: NodeOrLeaf[Token]): Expr = {
     ptree match {
       case Node('Expr8 ::= _, List(expr9, exprseq8)) =>
+        constructOpExpr(constructExpr9(expr9), exprseq8)
       case Node('Expr8 ::= _, List(expr9)) =>
+        constructExpr9(expr9)
     }
   }
 
   def constructExpr9(ptree: NodeOrLeaf[Token]): Expr = {
     ptree match {
-      case Node('Expr ::= List(BANG(), _), List(Leaf(bt), expr10)) =>
+      case Node('Expr9 ::= List(BANG(), _), List(Leaf(bt), expr10)) =>
         Not(constructExpr10(expr10)).setPos(bt)
-      case Node('Expr ::= List(MINUS(), _), List(Leaf(mt), expr10)) =>
+      case Node('Expr9 ::= List(MINUS(), _), List(Leaf(mt), expr10)) =>
         Neg(constructExpr10(expr10)).setPos(mt)
     }
   }
 
   def constructExpr10(ptree: NodeOrLeaf[Token]): Expr = {
-
+    ptree match {
+      case Node('Expr10 ::= List('Id), List(id)) =>
+        val (name, pos) = constructName(id)
+        Variable(name).setPos(pos)
+    }
   }
 
   override def constructPattern(pTree: NodeOrLeaf[Token]): Pattern = {
