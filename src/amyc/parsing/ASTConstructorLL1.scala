@@ -33,6 +33,62 @@ class ASTConstructorLL1 extends ASTConstructor {
     }
   }
 
+  override def constructExpr(ptree: NodeOrLeaf[Token]): Expr = {
+    ptree match {
+      case Node('Expr ::= _, List(Leaf(vt), param, _, expr2, _, expr)) =>
+        Let(constructParam(param), constructExpr2(expr2), constructExpr(expr))
+      case Node('Expr ::= _, List(expr2, exprhelper)) =>
+        val part1 = constructExpr2(expr2)
+        val part2 = constructExprHelper(exprhelper)
+        Sequence(part1, part2).setPos(part1)
+      case Node('Expr ::= _, List(expr2)) =>
+        constructExpr2(expr2)
+    }
+  }
+
+  def constructExprHelper(ptree: NodeOrLeaf[Token]): Expr = {
+    ptree match {
+      case Node('ExprHelper ::= _, List(_, expr)) =>
+        constructExpr(expr)
+    }
+  }
+
+  def constructExpr2(ptree: NodeOrLeaf[Token]): Expr = {
+
+  }
+
+  def constructExpr3(ptree: NodeOrLeaf[Token]): Expr = {
+
+  }
+
+  def constructExpr4(ptree: NodeOrLeaf[Token]): Expr = {
+
+  }
+
+  def constructExpr5(ptree: NodeOrLeaf[Token]): Expr = {
+
+  }
+
+  def constructExpr6(ptree: NodeOrLeaf[Token]): Expr = {
+
+  }
+
+  def constructExpr7(ptree: NodeOrLeaf[Token]): Expr = {
+
+  }
+
+  def constructExpr8(ptree: NodeOrLeaf[Token]): Expr = {
+
+  }
+
+  def constructExpr9(ptree: NodeOrLeaf[Token]): Expr = {
+
+  }
+
+  def constructExpr10(ptree: NodeOrLeaf[Token]): Expr = {
+
+  }
+
   override def constructPattern(pTree: NodeOrLeaf[Token]): Pattern = {
     pTree match {
       case Node('Pattern ::= List(UNDERSCORE()), List(Leaf(ut))) =>
@@ -50,11 +106,12 @@ class ASTConstructorLL1 extends ASTConstructor {
     }
   }
 
+
   def constructPatternSeq(pTree: NodeOrLeaf[Token]): (String, List[Pattern]) = {
     pTree match {
       case Node('PatternSeq ::= _, List(qn, _, patts, _)) =>
         val qname = constructQnameSeq(qn)
-        val patterns = constructList(patterns, constructPattern, hasComma = true)
+        val patterns = constructList(patts, constructPattern, hasComma = true)
         (qname, patterns)
     }
   }
@@ -83,4 +140,3 @@ class ASTConstructorLL1 extends ASTConstructor {
   }
 
 }
-
