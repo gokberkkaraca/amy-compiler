@@ -302,6 +302,15 @@ class ASTConstructorLL1 extends ASTConstructor {
     }
   }
 
+  override def constructOp(ptree: NodeOrLeaf[Token]): (Expr, Expr) => Expr = {
+    ptree match {
+      case Leaf(t) =>
+        tokenToExpr(t)
+      case Node(_, List(Leaf(t))) =>
+        tokenToExpr(t)
+    }
+  }
+
   // Important helper method:
   // Because LL1 grammar is not helpful in implementing left associativity,
   // we give you this method to reconstruct it.

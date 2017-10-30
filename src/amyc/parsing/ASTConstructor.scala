@@ -118,8 +118,6 @@ class ASTConstructor {
 
   def constructOp(ptree: NodeOrLeaf[Token]): (Expr, Expr) => Expr = {
     ptree match {
-      case Leaf(t) =>
-        tokenToExpr(t)
       case Node(_, List(Leaf(t))) =>
         tokenToExpr(t)
     }
