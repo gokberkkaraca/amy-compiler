@@ -101,8 +101,6 @@ class ASTConstructorLL1 extends ASTConstructor {
     ptree match {
       case Node('Expr3 ::= _, List(expr4, exprseq3)) =>
         constructOpExpr(constructExpr4(expr4), exprseq3, constructExpr4)
-      case Node('Expr3 ::= _, List(expr4)) =>
-        constructExpr4(expr4)
     }
   }
 
@@ -110,8 +108,6 @@ class ASTConstructorLL1 extends ASTConstructor {
     ptree match {
       case Node('Expr4 ::= _, List(expr5, exprseq4)) =>
         constructOpExpr(constructExpr5(expr5), exprseq4, constructExpr5)
-      case Node('Expr4 ::= _, List(expr5)) =>
-        constructExpr5(expr5)
     }
   }
 
@@ -119,8 +115,6 @@ class ASTConstructorLL1 extends ASTConstructor {
     ptree match {
       case Node('Expr5 ::= _, List(expr6, exprseq5)) =>
         constructOpExpr(constructExpr6(expr6), exprseq5, constructExpr6)
-      case Node('Expr5 ::= _, List(expr6)) =>
-        constructExpr6(expr6)
     }
   }
 
@@ -128,8 +122,6 @@ class ASTConstructorLL1 extends ASTConstructor {
     ptree match {
       case Node('Expr6 ::= _, List(expr7, exprseq6)) =>
         constructOpExpr(constructExpr7(expr7), exprseq6, constructExpr7)
-      case Node('Expr6 ::= _, List(expr7)) =>
-        constructExpr7(expr7)
     }
   }
 
@@ -137,8 +129,6 @@ class ASTConstructorLL1 extends ASTConstructor {
     ptree match {
       case Node('Expr7 ::= _, List(expr8, exprseq7)) =>
         constructOpExpr(constructExpr8(expr8), exprseq7, constructExpr8)
-      case Node('Expr7 ::= _, List(expr8)) =>
-        constructExpr8(expr8)
     }
   }
 
@@ -146,8 +136,6 @@ class ASTConstructorLL1 extends ASTConstructor {
     ptree match {
       case Node('Expr8 ::= _, List(expr9, exprseq8)) =>
         constructOpExpr(constructExpr9(expr9), exprseq8, constructExpr9)
-      case Node('Expr8 ::= _, List(expr9)) =>
-        constructExpr9(expr9)
     }
   }
 
