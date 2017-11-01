@@ -45,16 +45,44 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
 
 
     // Step 2: Check name uniqueness of definitions in each module
-    // TODO
+    p.modules.foreach {
+      case (moduleDef) =>
+          moduleDef.defs.groupBy(_.name).foreach{
+            case (name, listDefs) =>
+              if (listDefs.size > 1)
+              fatal(s"Two definitions named $name in ${moduleDef.name}", listDefs.head.position)
+        }
+    }
 
     // Step 3: Discover types and add them to symbol table
-    // TODO
+    p.modules.foreach {
+      case (moduleDef) =>
+        moduleDef.defs foreach {
+          case N.AbstractClassDef(name) => table.addType(moduleDef.name, name)
+          case _ => _ // Prevent match error for other types of ModuleDefs
+        }
+    }
 
     // Step 4: Discover type constructors, add them to table
-    // TODO
+    p.modules.foreach {
+      case (moduleDef) =>
+        moduleDef.defs foreach {
+          case N.CaseClassDef(name, fields, _) =>
+            val args: List[S.Type] = fields.map(tt => transformType(tt, moduleDef.name))
+            table.addConstructor(moduleDef.name, name, args, table.getType(moduleDef.name, name).get)
+        }
+    }
 
     // Step 5: Discover functions signatures, add them to table
-    // TODO
+    p.modules.foreach {
+      case (moduleDef) =>
+        moduleDef.defs foreach {
+            case N.FunDef(name, params, retType, _) =>
+              val argTypes = params.map(param => param.tpe).map(tt => transformType(tt, moduleDef.name))
+              val symRetType = transformType(retType, moduleDef.name)
+              table.addFunction(moduleDef.name, name, argTypes, symRetType)
+          }
+    }
 
     // Step 6: We now know all definitions in the program.
     //         Reconstruct modules and analyse function bodies/ expressions
@@ -67,12 +95,26 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
 
     def transformDef(df: N.ClassOrFunDef, module: String): S.ClassOrFunDef = { df match {
       case N.AbstractClassDef(name) =>
-        ??? // TODO
+        transformAbsClassDef(name, module)
       case N.CaseClassDef(name, _, _) =>
-        ??? // TODO
+        transformCaseClassDef(name, module)
       case fd: N.FunDef =>
         transformFunDef(fd, module)
     }}.setPos(df)
+
+    def transformAbsClassDef(name: N.Name, module: String): S.ClassOrFunDef ={
+      val Some(id) = table.getType(module, name)
+      // TODO Add position
+      S.AbstractClassDef(id)
+    }
+
+    def transformCaseClassDef(name: N.Name, module: String): S.ClassOrFunDef ={
+      val (id, sig) = table.getConstructor(module, name).get
+      val (argType, parent, index) = sig
+
+      // TODO check if argType is given correctly
+      S.CaseClassDef(id, argType, parent).setPos(index)
+    }
 
     def transformFunDef(fd: N.FunDef, module: String): S.FunDef = {
       val N.FunDef(name, params, retType, body) = fd
