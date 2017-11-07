@@ -39,4 +39,12 @@ abstract class TestSuite extends CompilerTest {
     shouldFail(List(inputFile))
   }
 
+  def shouldPass(inputFiles: List[String], input: String = ""): Unit = {
+    demandPass(pipeline, inputFiles map (f => s"$baseDir/$passing/$f.scala"), input)
+  }
+
+  def shouldPass(inputFile: String): Unit = {
+    shouldPass(List(inputFile))
+  }
+
 }
