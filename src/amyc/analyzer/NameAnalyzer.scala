@@ -104,16 +104,15 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
 
     def transformAbsClassDef(name: N.Name, module: String): S.ClassOrFunDef ={
       val Some(id) = table.getType(module, name)
-      // TODO Add position
       S.AbstractClassDef(id)
     }
 
     def transformCaseClassDef(name: N.Name, module: String): S.ClassOrFunDef ={
       val (id, sig) = table.getConstructor(module, name).get
-      val (argType, parent, index) = sig
+      val ConstrSig(argTypes, parent, _) = sig
 
-      // TODO check if argType is given correctly
-      S.CaseClassDef(id, argType, parent).setPos(index)
+      val symArgTypes = argTypes.map(arg => S.TypeTree(arg))
+      S.CaseClassDef(id, symArgTypes, parent)
     }
 
     def transformFunDef(fd: N.FunDef, module: String): S.FunDef = {
