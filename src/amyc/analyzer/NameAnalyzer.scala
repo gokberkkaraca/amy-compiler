@@ -184,10 +184,10 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
         case N.Variable(name) => ???
 
         // Literals
-        case N.IntLiteral(value) => ???
-        case N.BooleanLiteral(value) => ???
-        case N.StringLiteral(value) => ???
-        case N.UnitLiteral() => ???
+        case N.IntLiteral(value) => S.IntLiteral(value)
+        case N.BooleanLiteral(value) => S.BooleanLiteral(value)
+        case N.StringLiteral(value) => S.StringLiteral(value)
+        case N.UnitLiteral() => S.UnitLiteral()
 
         // Binary operators
         case N.Plus(lhs, rhs) => S.Plus(transformExpr(lhs), transformExpr(rhs))
