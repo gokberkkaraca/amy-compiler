@@ -59,7 +59,7 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
       case (moduleDef) =>
         moduleDef.defs foreach {
           case N.AbstractClassDef(name) => table.addType(moduleDef.name, name)
-          case _ => _ // Prevent match error for other types of ModuleDefs
+          case _ => // Prevent match error for other types of ModuleDefs
         }
     }
 
@@ -70,6 +70,7 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
           case N.CaseClassDef(name, fields, _) =>
             val args: List[S.Type] = fields.map(tt => transformType(tt, moduleDef.name))
             table.addConstructor(moduleDef.name, name, args, table.getType(moduleDef.name, name).get)
+          case _ =>
         }
     }
 
@@ -153,15 +154,24 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
       val (params, locals) = names
       val res = expr match {
         // Function/ type constructor call
-        case N.Call(qname, args) => ???
-        case N.Sequence(e1, e2) => ???
-        case N.Let(df, value, body) => ???
-        case N.Ite(cond, thenn, elze) => ???
+        case N.Call(qname, args) =>
+          val sName = Identifier.fresh(qname.name)
+          S.Call(sName, args.map(arg => transformExpr(arg)))
+        case N.Sequence(e1, e2) => S.Sequence(transformExpr(e1), transformExpr(e2))
+        case N.Let(df, value, body) =>
+          val sName = Identifier.fresh(df.name)
+          val sTypeTree = S.TypeTree(transformType(df.tpe, module))
+          val paramDef = S.ParamDef(sName, sTypeTree)
+          val sValue = transformExpr(value)
+          val sBody = transformExpr(body)(module, (params, locals + (df.name -> sName)))
+          S.Let(paramDef, sValue, sBody)
+        case N.Ite(cond, thenn, elze) => S.Ite(transformExpr(cond), transformExpr(thenn), transformExpr(elze))
         case N.Match(scrut, cases) =>
           def transformCase(cse: N.MatchCase) = {
             val N.MatchCase(pat, rhs) = cse
             val (newPat, moreLocals) = transformPattern(pat)
-            ??? // TODO
+            val newLocals: Map[String, Identifier] = locals ++ moreLocals.toMap
+            S.MatchCase(newPat, transformExpr(rhs)(module, (params, newLocals)))
           }
 
           // Returns a transformed pattern along with all bindings
@@ -173,15 +183,26 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
               case N.IdPattern(name) =>
                 val id = Identifier.fresh(name)
                 (S.IdPattern(id), List((name, id)))
-              case N.LiteralPattern(lit) => ???
-              case N.CaseClassPattern(constr, args) => ???
+              case N.LiteralPattern(lit) =>
+                val sLit = lit match {
+                  case N.IntLiteral(value) => S.IntLiteral(value)
+                  case N.BooleanLiteral(value) => S.BooleanLiteral(value)
+                  case N.StringLiteral(value) => S.StringLiteral(value)
+                  case N.UnitLiteral() => S.UnitLiteral()
+                }
+                (S.LiteralPattern(sLit), Nil)
+              case N.CaseClassPattern(constr, args) =>
+                val sConstr = table.getConstructor(constr.module.get, constr.name)
+                (S.CaseClassPattern(sConstr.get._1, args.map(arg => transformPattern(arg)._1)), Nil) // TODO check what to return in the list
             }
           }
 
           S.Match(transformExpr(scrut), cases map transformCase)
 
         // Variable
-        case N.Variable(name) => ???
+        case N.Variable(name) =>
+          val identifier = locals.getOrElse(name, params.getOrElse(name, fatal(s"Variable $name does not exist", expr)))
+          S.Variable(identifier)
 
         // Literals
         case N.IntLiteral(value) => S.IntLiteral(value)
