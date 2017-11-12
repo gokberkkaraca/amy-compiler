@@ -58,7 +58,8 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
     p.modules.foreach {
       case (moduleDef) =>
         moduleDef.defs foreach {
-          case N.AbstractClassDef(name) => table.addType(moduleDef.name, name)
+          case N.AbstractClassDef(name) =>
+            table.addType(moduleDef.name, name)
           case _ => // Prevent match error for other types of ModuleDefs
         }
     }
@@ -67,10 +68,10 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
     p.modules.foreach {
       case (moduleDef) =>
         moduleDef.defs foreach {
-          case N.CaseClassDef(name, fields, _) =>
+          case N.CaseClassDef(name, fields, parent) =>
             val args: List[S.Type] = fields.map(tt => transformType(tt, moduleDef.name))
-            table.addConstructor(moduleDef.name, name, args, table.getType(moduleDef.name, name).get)
-          case _ =>
+            table.addConstructor(moduleDef.name, name, args, table.getType(moduleDef.name, parent).get)
+          case _ => // Prevent match error for other types of ModuleDefs
         }
     }
 
@@ -82,6 +83,7 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
             val argTypes = params.map(param => param.tpe).map(tt => transformType(tt, moduleDef.name))
             val symRetType = transformType(retType, moduleDef.name)
             table.addFunction(moduleDef.name, name, argTypes, symRetType)
+          case _ => // Prevent match error for other types of ModuleDefs
         }
     }
 
@@ -192,7 +194,10 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
                 }
                 (S.LiteralPattern(sLit), Nil)
               case N.CaseClassPattern(constr, args) =>
-                val sConstr = table.getConstructor(constr.module.get, constr.name)
+                val owner = constr.module.getOrElse(module) // TODO Check if this getOrElse correct
+                val name = constr.name
+                println(owner, name)
+                val sConstr = table.getConstructor(owner, name)
                 (S.CaseClassPattern(sConstr.get._1, args.map(arg => transformPattern(arg)._1)), Nil) // TODO check what to return in the list
             }
           }
