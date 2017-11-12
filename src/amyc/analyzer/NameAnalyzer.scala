@@ -161,11 +161,9 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
           val name = qname.name
           val (sName, _) = table.getConstructor(owner, name).getOrElse(table.getFunction(owner,name).getOrElse(fatal(s"Constructor or function couldn't be found with name $owner.$name", expr)))
           val newArgs = args.map(arg => transformExpr(arg))
-          println(name)
           S.Call(sName, newArgs)
         case N.Sequence(e1, e2) => S.Sequence(transformExpr(e1), transformExpr(e2))
         case N.Let(df, value, body) =>
-          println("variable def " + df.name)
           val sName = Identifier.fresh(df.name)
           val sTypeTree = S.TypeTree(transformType(df.tpe, module))
           val paramDef = S.ParamDef(sName, sTypeTree)
@@ -174,9 +172,7 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
           S.Let(paramDef, sValue, sBody)
         case N.Ite(cond, thenn, elze) => S.Ite(transformExpr(cond), transformExpr(thenn), transformExpr(elze))
         case N.Match(scrut, cases) =>
-          println("pattern matching")
           def transformCase(cse: N.MatchCase) = {
-            println("transformCase")
             val N.MatchCase(pat, rhs) = cse
             val (newPat, moreLocals) = transformPattern(pat)
             val newLocals: Map[String, Identifier] = locals ++ moreLocals.toMap
@@ -190,10 +186,8 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
           def transformPattern(pat: N.Pattern): (S.Pattern, List[(String, Identifier)]) = {
             pat match {
               case N.WildcardPattern() =>
-                println("wildcard pattern")
                 (S.WildcardPattern(), List())
               case N.IdPattern(name) =>
-                println("id pattern " + name)
                 val id = Identifier.fresh(name)
                 (S.IdPattern(id), List((name, id)))
               case N.LiteralPattern(lit) =>
@@ -205,7 +199,6 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
                 }
                 (S.LiteralPattern(sLit), Nil)
               case N.CaseClassPattern(constr, args) =>
-                println("case class pattern " + constr.module + "." + constr.name)
                 val owner = constr.module.getOrElse(module)
                 val name = constr.name
                 val sConstr = table.getConstructor(owner, name)
@@ -220,7 +213,6 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
 
         // Variable
         case N.Variable(name) =>
-          println(name)
           val identifier = locals.getOrElse(name, params.getOrElse(name, fatal(s"Variable $name does not exist", expr)))
           S.Variable(identifier)
 
