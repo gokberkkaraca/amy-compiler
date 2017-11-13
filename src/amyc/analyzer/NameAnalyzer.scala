@@ -70,7 +70,8 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
         moduleDef.defs foreach {
           case N.CaseClassDef(name, fields, parent) =>
             val args: List[S.Type] = fields.map(tt => transformType(tt, moduleDef.name))
-            table.addConstructor(moduleDef.name, name, args, table.getType(moduleDef.name, parent).get)
+            table.addConstructor(
+              moduleDef.name, name, args, table.getType(moduleDef.name, parent).getOrElse(fatal(s"Type does not exist: ${moduleDef.name}")))
           case _ => // Prevent match error for other types of ModuleDefs
         }
     }
@@ -108,12 +109,14 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
     }.setPos(df)
 
     def transformAbsClassDef(name: N.Name, module: String): S.ClassOrFunDef = {
-      val Some(id) = table.getType(module, name)
+      // TODO give position to fatal
+      val id = table.getType(module, name).getOrElse(fatal(s"Couldn't find type $module.$name"))
       S.AbstractClassDef(id)
     }
 
     def transformCaseClassDef(name: N.Name, module: String): S.ClassOrFunDef = {
-      val (id, sig) = table.getConstructor(module, name).get
+      // TODO give position to fatal
+      val (id, sig) = table.getConstructor(module, name).getOrElse(fatal(s"Couldn't find constructor $module.$name"))
       val ConstrSig(argTypes, parent, _) = sig
 
       val symArgTypes = argTypes.map(arg => S.TypeTree(arg))
@@ -157,9 +160,11 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
       val res = expr match {
         // Function/ type constructor call
         case N.Call(qname, args) =>
+          // TODO Check position of expr that matches with call
           val owner = qname.module.getOrElse(module)
           val name = qname.name
-          val (sName, _) = table.getConstructor(owner, name).getOrElse(table.getFunction(owner,name).getOrElse(fatal(s"Constructor or function couldn't be found with name $owner.$name", expr)))
+          val (sName, constrSig) = table.getConstructor(owner, name).getOrElse(table.getFunction(owner,name).getOrElse(fatal(s"Constructor or function couldn't be found with name $owner.$name", expr)))
+          if (args.size != constrSig.argTypes.size) fatal(s"Wrong number of arguments in $owner.$name", expr)
           val newArgs = args.map(arg => transformExpr(arg))
           S.Call(sName, newArgs)
         case N.Sequence(e1, e2) => S.Sequence(transformExpr(e1), transformExpr(e2))
@@ -176,7 +181,7 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
             val N.MatchCase(pat, rhs) = cse
             val (newPat, moreLocals) = transformPattern(pat)
             val newLocals: Map[String, Identifier] = locals ++ moreLocals.toMap
-            S.MatchCase(newPat, transformExpr(rhs)(module, (params, newLocals)))
+            S.MatchCase(newPat, transformExpr(rhs)(module, (params, newLocals))).setPos(cse)
           }
 
           // Returns a transformed pattern along with all bindings
@@ -186,26 +191,30 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
           def transformPattern(pat: N.Pattern): (S.Pattern, List[(String, Identifier)]) = {
             pat match {
               case N.WildcardPattern() =>
-                (S.WildcardPattern(), List())
+                (S.WildcardPattern().setPos(pat), List())
               case N.IdPattern(name) =>
                 val id = Identifier.fresh(name)
-                (S.IdPattern(id), List((name, id)))
+                (S.IdPattern(id).setPos(pat), List((name, id)))
               case N.LiteralPattern(lit) =>
                 val sLit = lit match {
-                  case N.IntLiteral(value) => S.IntLiteral(value)
-                  case N.BooleanLiteral(value) => S.BooleanLiteral(value)
-                  case N.StringLiteral(value) => S.StringLiteral(value)
-                  case N.UnitLiteral() => S.UnitLiteral()
+                  case N.IntLiteral(value) => S.IntLiteral(value).setPos(lit)
+                  case N.BooleanLiteral(value) => S.BooleanLiteral(value).setPos(lit)
+                  case N.StringLiteral(value) => S.StringLiteral(value).setPos(lit)
+                  case N.UnitLiteral() => S.UnitLiteral().setPos(lit)
                 }
-                (S.LiteralPattern(sLit), Nil)
+                (S.LiteralPattern(sLit).setPos(pat), Nil)
               case N.CaseClassPattern(constr, args) =>
                 val owner = constr.module.getOrElse(module)
                 val name = constr.name
                 val sConstr = table.getConstructor(owner, name)
+                val (id, constrSig) = sConstr.getOrElse(fatal(s"Constructor does not exist: $owner.$name"))
+
+                if (constrSig.argTypes.size != args.size) fatal(s"Wrong number of arguments in $owner.$name", pat)
+
                 val transformedArgs = args.map(arg => transformPattern(arg))
                 val newArgs = transformedArgs.map(arg => arg._1)
                 val newLocals = transformedArgs.flatMap(arg => arg._2)
-                (S.CaseClassPattern(sConstr.get._1, newArgs), newLocals)
+                (S.CaseClassPattern(id, newArgs).setPos(pat), newLocals)
             }
           }
 
@@ -242,7 +251,6 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
         // Represents a computational error; prints its message, then exits
         case N.Error(msg) => S.Error(transformExpr(msg))
       }
-
       res.setPos(expr)
     }
 
