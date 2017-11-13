@@ -109,14 +109,12 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
     }.setPos(df)
 
     def transformAbsClassDef(name: N.Name, module: String): S.ClassOrFunDef = {
-      // TODO give position to fatal
-      val id = table.getType(module, name).getOrElse(fatal(s"Couldn't find type $module.$name"))
+      val id = table.getType(module, name).get
       S.AbstractClassDef(id)
     }
 
     def transformCaseClassDef(name: N.Name, module: String): S.ClassOrFunDef = {
-      // TODO give position to fatal
-      val (id, sig) = table.getConstructor(module, name).getOrElse(fatal(s"Couldn't find constructor $module.$name"))
+      val (id, sig) = table.getConstructor(module, name).get
       val ConstrSig(argTypes, parent, _) = sig
 
       val symArgTypes = argTypes.map(arg => S.TypeTree(arg))
@@ -160,7 +158,6 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
       val res = expr match {
         // Function/ type constructor call
         case N.Call(qname, args) =>
-          // TODO Check position of expr that matches with call
           val owner = qname.module.getOrElse(module)
           val name = qname.name
           val (sName, constrSig) = table.getConstructor(owner, name).getOrElse(table.getFunction(owner,name).getOrElse(fatal(s"Constructor or function couldn't be found with name $owner.$name", expr)))
@@ -192,7 +189,6 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
           // Returns a transformed pattern along with all bindings
           // from strings to unique identifiers for names bound in the pattern.
           // Also, calls 'fatal' if a new name violates the Amy naming rules.
-          // TODO when should I fatal
           def transformPattern(pat: N.Pattern): (S.Pattern, List[(String, Identifier)]) = {
             pat match {
               case N.WildcardPattern() =>
