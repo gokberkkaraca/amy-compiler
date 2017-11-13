@@ -173,6 +173,7 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
           val sTypeTree = S.TypeTree(transformType(df.tpe, module))
           val paramDef = S.ParamDef(sName, sTypeTree)
           val sValue = transformExpr(value)
+          if (locals.contains(df.name)) fatal(s"Variable redefinition of ${df.name}", df.position)
           val sBody = transformExpr(body)(module, (params, locals + (df.name -> sName)))
           S.Let(paramDef, sValue, sBody)
         case N.Ite(cond, thenn, elze) => S.Ite(transformExpr(cond), transformExpr(thenn), transformExpr(elze))
@@ -180,6 +181,10 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
           def transformCase(cse: N.MatchCase) = {
             val N.MatchCase(pat, rhs) = cse
             val (newPat, moreLocals) = transformPattern(pat)
+
+            // Check naming rules
+            val redefinedLocals = locals.keySet.intersect(moreLocals.toMap.keySet)
+            if (redefinedLocals.nonEmpty) fatal(s"Variable redefinition of ${redefinedLocals.head}", pat)
             val newLocals: Map[String, Identifier] = locals ++ moreLocals.toMap
             S.MatchCase(newPat, transformExpr(rhs)(module, (params, newLocals))).setPos(cse)
           }
