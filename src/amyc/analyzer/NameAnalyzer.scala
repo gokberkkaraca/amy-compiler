@@ -184,7 +184,7 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
 
             // Check naming rules
             val redefinedLocals = locals.keySet.intersect(moreLocals.toMap.keySet)
-            if (redefinedLocals.nonEmpty) fatal(s"Variable redefinition of ${redefinedLocals.head}", pat)
+            if (redefinedLocals.nonEmpty) fatal(s"Pattern identifier ${redefinedLocals.head} already defined", pat)
             val newLocals: Map[String, Identifier] = locals ++ moreLocals.toMap
             S.MatchCase(newPat, transformExpr(rhs)(module, (params, newLocals))).setPos(cse)
           }
@@ -219,6 +219,7 @@ object NameAnalyzer extends Pipeline[N.Program, (S.Program, SymbolTable)] {
                 val transformedArgs = args.map(arg => transformPattern(arg))
                 val newArgs = transformedArgs.map(arg => arg._1)
                 val newLocals = transformedArgs.flatMap(arg => arg._2)
+                if (newLocals.map(_._1).distinct.size < newLocals.size) fatal(s"Multiple definitions of in pattern", pat)
                 (S.CaseClassPattern(id, newArgs).setPos(pat), newLocals)
             }
           }
