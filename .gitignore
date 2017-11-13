@@ -10,4 +10,5 @@ compiler/node_modules
 # Vim
 *.swp
 #idea
+amyc_2.12-1.4.jar
 .idea/
