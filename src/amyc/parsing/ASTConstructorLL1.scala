@@ -41,7 +41,7 @@ class ASTConstructorLL1 extends ASTConstructor {
   override def constructExpr(ptree: NodeOrLeaf[Token]): Expr = {
     ptree match {
       case Node('Expr ::= _, List(Leaf(vt), param, _, expr2, _, expr)) =>
-        Let(constructParam(param), constructExpr2(expr2), constructExpr(expr))
+        Let(constructParam(param), constructExpr2(expr2), constructExpr(expr)).setPos(vt)
       case Node('Expr ::= _, List(expr2, exprSeq)) =>
         val (isExprSeqEpsilon, part2) = constructExprSeq(exprSeq)
 
@@ -69,7 +69,7 @@ class ASTConstructorLL1 extends ASTConstructor {
         if(isExprSeq2Epsilon) constructExpr3(expr3)
         else {
           val scrut = constructExpr3(expr3)
-          Match(scrut, constructCases(cases))
+          Match(scrut, constructCases(cases)).setPos(scrut)
         }
     }
   }
@@ -164,12 +164,12 @@ class ASTConstructorLL1 extends ASTConstructor {
           if(isQNameSeqEpsilon) {
             val (name, pos) = constructName(id)
             val qname = QualifiedName(None, name)
-            Call(qname, args)
+            Call(qname, args).setPos(pos)
           }
           else {
             val (module, pos) = constructName(id)
             val qname = QualifiedName(Some(module), qnameid.get)
-            Call(qname, args)
+            Call(qname, args).setPos(pos)
           }
         }
 
