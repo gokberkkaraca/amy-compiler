@@ -26,6 +26,8 @@ object TypeChecker extends Pipeline[(Program, SymbolTable), (Program, SymbolTabl
     }
   }
 
+  val list: List[Int] = Nil
+
   def run(ctx: Context)(v: (Program, SymbolTable)) = {
     import ctx.reporter._
 
@@ -36,7 +38,7 @@ object TypeChecker extends Pipeline[(Program, SymbolTable), (Program, SymbolTabl
     // Make sure the helper methods provided.
     // Remember to add local variables to the symbol table to use them later!
     def tc(expr: Expr, expected: Option[Type]): Type = {
-      // Check a type 'actual' agains the expected type if present,
+      // Check a type 'actual' against the expected type if present,
       // and emit an error if it is not equal
       def check(actual: Type)(implicit pos: Positioned) = {
         expected.foreach { exp =>
@@ -48,7 +50,7 @@ object TypeChecker extends Pipeline[(Program, SymbolTable), (Program, SymbolTabl
       }
 
       // Compute least upper bound, emit an error and return the first one if not defined
-      def lub(t1: Type, t2: Type)(pos: Positioned) = leastUpperBound(t1, t2).getOrElse{
+      def lub(t1: Type, t2: Type)(pos: Positioned) = leastUpperBound(t1, t2).getOrElse {
         error(s"Incompatible types $t1 and $t2", pos)
         t1
       }
@@ -63,12 +65,74 @@ object TypeChecker extends Pipeline[(Program, SymbolTable), (Program, SymbolTabl
       implicit val pos: Positioned = expr
 
       expr match {
-        case _ => 
-          ??? // TODO
+
+          // Literals
+          case IntLiteral(_) => IntType
+          case BooleanLiteral(_) => BooleanType
+          case StringLiteral(_) => StringType
+          case UnitLiteral() => UnitType
+
+          // Binary operators
+          case Plus(lhs, rhs) =>
+            tc(lhs, Some(IntType))
+            tc(rhs, Some(IntType))
+            check(IntType)
+          case Minus(lhs, rhs) =>
+            tc(lhs, Some(IntType))
+            tc(rhs, Some(IntType))
+            check(IntType)
+          case Times(lhs, rhs) =>
+            tc(lhs, Some(IntType))
+            tc(rhs, Some(IntType))
+            check(IntType)
+          case Div(lhs, rhs) =>
+            tc(lhs, Some(IntType))
+            tc(rhs, Some(IntType))
+            check(IntType)
+          case Mod(lhs, rhs) =>
+            tc(lhs, Some(IntType))
+            tc(rhs, Some(IntType))
+            check(IntType)
+          case LessThan(lhs, rhs) =>
+            tc(lhs, Some(IntType))
+            tc(rhs, Some(IntType))
+            check(BooleanType)
+          case LessEquals(lhs, rhs) =>
+            tc(lhs, Some(IntType))
+            tc(rhs, Some(IntType))
+            check(BooleanType)
+          case And(lhs, rhs) =>
+            tc(lhs, Some(BooleanType))
+            tc(rhs, Some(BooleanType))
+            check(BooleanType)
+          case Or(lhs, rhs) =>
+            tc(lhs, Some(BooleanType))
+            tc(rhs, Some(BooleanType))
+            check(BooleanType)
+          case Equals(lhs, rhs) =>
+            //tc(lhs, Some(tc(rhs, None))) // TODO Check if this is correct, maybe use lub?
+            lub(tc(lhs, None), tc(rhs, None))
+            check(BooleanType)
+          case Concat(lhs, rhs) =>
+            tc(lhs, Some(StringType))
+            tc(rhs, Some(StringType))
+            check(StringType)
+
+          // Unary operators
+          case Not(e) => tc(e, Some(BooleanType))
+          case Neg(e) => tc(e, Some(IntType))
+
+          // Represents a computational error; prints its message, then exits
+          case Error(msg) => tc(msg, Some(NothingType))
+
+
+
+
+
       }
     }
 
-    // Putting it all togetehr:
+    // Putting it all together:
     program.modules.foreach { mod =>
       // put function parameters to the symbol table, then typecheck them against the return type
       mod.defs.collect { case FunDef(_, params, retType, body) =>
