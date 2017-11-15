@@ -63,71 +63,128 @@ object TypeChecker extends Pipeline[(Program, SymbolTable), (Program, SymbolTabl
 
       // Implicit position for 'check'
       implicit val pos: Positioned = expr
-
       expr match {
 
-          // Literals
-          case IntLiteral(_) => IntType
-          case BooleanLiteral(_) => BooleanType
-          case StringLiteral(_) => StringType
-          case UnitLiteral() => UnitType
+        // Function or constructor call
+        case Call(qname, args) =>
+          val consrSignature = table.getConstructor(qname).orNull
+          if (consrSignature != null) {
+            val ConstrSig(argTypes: List[Type], _, _) = table.getConstructor(qname).get
+            for(arg <- args; tpe <- argTypes) yield tc(arg, Some(tpe))
+            check(consrSignature.retType)
+          }
+          else {
+            val FunSig(argTypes, retType, _) = table.getFunction(qname).get
+            for(arg <- args; tpe <- argTypes) yield tc(arg, Some(tpe))
+            check(retType)
+          }
 
-          // Binary operators
-          case Plus(lhs, rhs) =>
-            tc(lhs, Some(IntType))
-            tc(rhs, Some(IntType))
-            check(IntType)
-          case Minus(lhs, rhs) =>
-            tc(lhs, Some(IntType))
-            tc(rhs, Some(IntType))
-            check(IntType)
-          case Times(lhs, rhs) =>
-            tc(lhs, Some(IntType))
-            tc(rhs, Some(IntType))
-            check(IntType)
-          case Div(lhs, rhs) =>
-            tc(lhs, Some(IntType))
-            tc(rhs, Some(IntType))
-            check(IntType)
-          case Mod(lhs, rhs) =>
-            tc(lhs, Some(IntType))
-            tc(rhs, Some(IntType))
-            check(IntType)
-          case LessThan(lhs, rhs) =>
-            tc(lhs, Some(IntType))
-            tc(rhs, Some(IntType))
-            check(BooleanType)
-          case LessEquals(lhs, rhs) =>
-            tc(lhs, Some(IntType))
-            tc(rhs, Some(IntType))
-            check(BooleanType)
-          case And(lhs, rhs) =>
-            tc(lhs, Some(BooleanType))
-            tc(rhs, Some(BooleanType))
-            check(BooleanType)
-          case Or(lhs, rhs) =>
-            tc(lhs, Some(BooleanType))
-            tc(rhs, Some(BooleanType))
-            check(BooleanType)
-          case Equals(lhs, rhs) =>
-            //tc(lhs, Some(tc(rhs, None))) // TODO Check if this is correct, maybe use lub?
-            lub(tc(lhs, None), tc(rhs, None))
-            check(BooleanType)
-          case Concat(lhs, rhs) =>
-            tc(lhs, Some(StringType))
-            tc(rhs, Some(StringType))
-            check(StringType)
+        // Expression sequence
+        case Sequence(e1, e2) =>
+          tc(e1, None)
+          val seqType = tc(e2, None)
+          check(seqType)
 
-          // Unary operators
-          case Not(e) => tc(e, Some(BooleanType))
-          case Neg(e) => tc(e, Some(IntType))
+        // Variable definition
+        case Let(df, value, body) =>
+          table.addLocal(df.name, df.tpe.tpe)
+          val valueType = tc(value, None)
+          val dfType = df.tpe.tpe
+          lub(valueType, dfType)(pos)
+          val bodyType = tc(body, None)
+          check(bodyType)
 
-          // Represents a computational error; prints its message, then exits
-          case Error(msg) => tc(msg, Some(NothingType))
+        // If then else
+        case Ite(cond, thenn, elze) =>
+          tc(cond, Some(BooleanType))
+          val exprType = lub(tc(thenn, None), tc(elze, None))(pos)
+          check(exprType)
 
+        // Match Case
+        case Match(scrut, cases) =>
+          val scrutType = tc(scrut, None)
+          // TODO complete this part
+          /*val patternList = cases.map(cse => cse.pat)
+          patternList.foreach(pattern => pattern match {
+            case WildcardPattern() =>
+            case IdPattern(name) =>
+          })
+          patternList.map(pattern => pattern)*/
+          val caseExprTypeList = cases.map(cse => cse.expr).map(expr => tc(expr, None))
+          val exprType = lub_*(caseExprTypeList)(pos)
+          check(exprType)
 
+        // Variable
+        case Variable(name) =>
+          check(table.getLocal(name).get)
 
+        // Literals
+        case IntLiteral(_) =>
+          check(IntType)
+        case BooleanLiteral(_) =>
+          check(BooleanType)
+        case StringLiteral(_) =>
+          check(StringType)
+        case UnitLiteral() =>
+          check(UnitType)
 
+        // Binary operators
+        case Plus(lhs, rhs) =>
+          tc(lhs, Some(IntType))
+          tc(rhs, Some(IntType))
+          check(IntType)
+        case Minus(lhs, rhs) =>
+          tc(lhs, Some(IntType))
+          tc(rhs, Some(IntType))
+          check(IntType)
+        case Times(lhs, rhs) =>
+          tc(lhs, Some(IntType))
+          tc(rhs, Some(IntType))
+          check(IntType)
+        case Div(lhs, rhs) =>
+          tc(lhs, Some(IntType))
+          tc(rhs, Some(IntType))
+          check(IntType)
+        case Mod(lhs, rhs) =>
+          tc(lhs, Some(IntType))
+          tc(rhs, Some(IntType))
+          check(IntType)
+        case LessThan(lhs, rhs) =>
+          tc(lhs, Some(IntType))
+          tc(rhs, Some(IntType))
+          check(BooleanType)
+        case LessEquals(lhs, rhs) =>
+          tc(lhs, Some(IntType))
+          tc(rhs, Some(IntType))
+          check(BooleanType)
+        case And(lhs, rhs) =>
+          tc(lhs, Some(BooleanType))
+          tc(rhs, Some(BooleanType))
+          check(BooleanType)
+        case Or(lhs, rhs) =>
+          tc(lhs, Some(BooleanType))
+          tc(rhs, Some(BooleanType))
+          check(BooleanType)
+        case Equals(lhs, rhs) =>
+          lub(tc(lhs, None), tc(rhs, None))(pos)
+          check(BooleanType)
+        case Concat(lhs, rhs) =>
+          tc(lhs, Some(StringType))
+          tc(rhs, Some(StringType))
+          check(StringType)
+
+        // Unary operators
+        case Not(e) =>
+          tc(e, Some(BooleanType))
+          check(BooleanType)
+        case Neg(e) =>
+          tc(e, Some(IntType))
+          check(IntType)
+
+        // Represents a computational error; prints its message, then exits
+        case Error(msg) =>
+          tc(msg, Some(StringType))
+          NothingType
 
       }
     }
