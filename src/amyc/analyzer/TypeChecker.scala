@@ -67,11 +67,11 @@ object TypeChecker extends Pipeline[(Program, SymbolTable), (Program, SymbolTabl
 
         // Function or constructor call
         case Call(qname, args) =>
-          val consrSignature = table.getConstructor(qname).orNull
-          if (consrSignature != null) {
+          val constrSig = table.getConstructor(qname).orNull
+          if (constrSig != null) {
             val ConstrSig(argTypes: List[Type], _, _) = table.getConstructor(qname).get
             for (i <- args.indices) tc(args(i), Some(argTypes(i)))
-            check(consrSignature.retType)
+            check(constrSig.retType)
           }
           else {
             val FunSig(argTypes, retType, _) = table.getFunction(qname).get
@@ -104,18 +104,35 @@ object TypeChecker extends Pipeline[(Program, SymbolTable), (Program, SymbolTabl
         case Match(scrut, cases) =>
           val scrutType = tc(scrut, None)
 
-          val patList: List[Pattern] = cases.map(cse => cse.pat)
+          for(i <- cases.indices) {
+            val cse: MatchCase = cases(i)
+            val pattern = cse.pat
+            val expr = cse.expr
 
-          // TODO Assertion: caseExprList is not empty, check if this is correct
-          val caseExprList: List[Expr] = cases.map(cse => cse.expr)
-          caseExprList.foreach(tc(_, None))
+            pattern match {
+              case WildcardPattern() => // No need to do something, matches everything
+              case IdPattern(name) => // Needs to be added to local table
+                table.addLocal(name, scrutType)
+              case LiteralPattern(lit) =>
+                tc(lit, Some(scrutType))
+              case CaseClassPattern(constr, args) =>
+                val constrSignature = table.getConstructor(constr).get
+                val ConstrSig(argTypes: List[Type], _, _) = table.getConstructor(constr).get
+                // TODO Convert patterns
+                // for (i <- args.indices) tc(args(i), Some(argTypes(i)))
+                check(constrSignature.retType)
+            }
+
+            tc(expr, None)
+          }
+
           val caseExprTypeList = cases.map(cse => cse.expr).map(expr => tc(expr, None))
           val exprType = lub_*(caseExprTypeList)(pos)
           check(exprType)
 
         // Variable
         case Variable(name) =>
-          check(table.getLocal(name).get)
+          check(table.getLocal(name).getOrElse(fatal(s"Couldn't find variable $name", pos)))
 
         // Literals
         case IntLiteral(_) =>
