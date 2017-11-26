@@ -70,12 +70,12 @@ object TypeChecker extends Pipeline[(Program, SymbolTable), (Program, SymbolTabl
           val consrSignature = table.getConstructor(qname).orNull
           if (consrSignature != null) {
             val ConstrSig(argTypes: List[Type], _, _) = table.getConstructor(qname).get
-            for(arg <- args; tpe <- argTypes) yield tc(arg, Some(tpe))
+            for (i <- args.indices) tc(args(i), Some(argTypes(i)))
             check(consrSignature.retType)
           }
           else {
             val FunSig(argTypes, retType, _) = table.getFunction(qname).get
-            for(arg <- args; tpe <- argTypes) yield tc(arg, Some(tpe))
+            for (i <- args.indices) tc(args(i), Some(argTypes(i)))
             check(retType)
           }
 
@@ -106,13 +106,11 @@ object TypeChecker extends Pipeline[(Program, SymbolTable), (Program, SymbolTabl
 
           val patList: List[Pattern] = cases.map(cse => cse.pat)
 
-          // TODO Assertion: exprList is not empty, check if this is correct
-          val exprList: List[Expr] = cases.map(cse => cse.expr)
-          val exprType: Type = tc(exprList.head, None)
-          exprList.foreach(tc(_, Some(exprType)))
-
-
-
+          // TODO Assertion: caseExprList is not empty, check if this is correct
+          val caseExprList: List[Expr] = cases.map(cse => cse.expr)
+          caseExprList.foreach(tc(_, None))
+          val caseExprTypeList = cases.map(cse => cse.expr).map(expr => tc(expr, None))
+          val exprType = lub_*(caseExprTypeList)(pos)
           check(exprType)
 
         // Variable
