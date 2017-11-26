@@ -103,15 +103,16 @@ object TypeChecker extends Pipeline[(Program, SymbolTable), (Program, SymbolTabl
         // Match Case
         case Match(scrut, cases) =>
           val scrutType = tc(scrut, None)
-          // TODO complete this part
-          /*val patternList = cases.map(cse => cse.pat)
-          patternList.foreach(pattern => pattern match {
-            case WildcardPattern() =>
-            case IdPattern(name) =>
-          })
-          patternList.map(pattern => pattern)*/
-          val caseExprTypeList = cases.map(cse => cse.expr).map(expr => tc(expr, None))
-          val exprType = lub_*(caseExprTypeList)(pos)
+
+          val patList: List[Pattern] = cases.map(cse => cse.pat)
+
+          // TODO Assertion: exprList is not empty, check if this is correct
+          val exprList: List[Expr] = cases.map(cse => cse.expr)
+          val exprType: Type = tc(exprList.head, None)
+          exprList.foreach(tc(_, Some(exprType)))
+
+
+
           check(exprType)
 
         // Variable
