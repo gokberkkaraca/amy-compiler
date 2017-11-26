@@ -109,20 +109,26 @@ object TypeChecker extends Pipeline[(Program, SymbolTable), (Program, SymbolTabl
             val pattern = cse.pat
             val expr = cse.expr
 
-            pattern match {
-              case WildcardPattern() => // No need to do something, matches everything
-              case IdPattern(name) => // Needs to be added to local table
-                table.addLocal(name, scrutType)
-              case LiteralPattern(lit) =>
-                tc(lit, Some(scrutType))
-              case CaseClassPattern(constr, args) =>
-                val constrSignature = table.getConstructor(constr).get
-                val ConstrSig(argTypes: List[Type], _, _) = table.getConstructor(constr).get
-                // TODO Convert patterns
-                // for (i <- args.indices) tc(args(i), Some(argTypes(i)))
-                check(constrSignature.retType)
+            def checkPattern(pattern: Pattern, expectedType: Type): Unit = {
+              pattern match {
+                case WildcardPattern() => // No need to do something, matches everything
+                case IdPattern(name) => // Needs to be added to local table
+                  table.addLocal(name, expectedType)
+                case LiteralPattern(lit) =>
+                  tc(lit, Some(scrutType))
+                case CaseClassPattern(constr, args) =>
+                  // Case class should be compared to scrut
+                  // Parameters should be compared to constructor signature and added to locals
+                  val constrSignature = table.getConstructor(constr).get
+                  if(constrSignature.retType != expectedType)
+                    error(s"Type error: expected $expectedType, found ${constrSignature.retType}", pattern.position)
+                  val ConstrSig(argTypes: List[Type], _, _) = table.getConstructor(constr).get
+                  for (i <- args.indices)
+                    checkPattern(args(i), argTypes(i))
+              }
             }
 
+            checkPattern(pattern, scrutType)
             tc(expr, None)
           }
 
