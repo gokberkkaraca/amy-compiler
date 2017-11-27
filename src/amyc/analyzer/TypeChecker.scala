@@ -120,7 +120,7 @@ object TypeChecker extends Pipeline[(Program, SymbolTable), (Program, SymbolTabl
                   // Case class should be compared to scrut
                   // Parameters should be compared to constructor signature and added to locals
                   val constrSignature = table.getConstructor(constr).get
-                  lub(constrSignature.retType, expectedType)
+                  lub(constrSignature.retType, expectedType)(pattern)
                   val ConstrSig(argTypes: List[Type], _, _) = table.getConstructor(constr).get
                   for (i <- args.indices)
                     checkPattern(args(i), argTypes(i))
