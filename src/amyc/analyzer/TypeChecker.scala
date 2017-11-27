@@ -115,13 +115,12 @@ object TypeChecker extends Pipeline[(Program, SymbolTable), (Program, SymbolTabl
                 case IdPattern(name) => // Needs to be added to local table
                   table.addLocal(name, expectedType)
                 case LiteralPattern(lit) =>
-                  tc(lit, Some(scrutType))
+                  tc(lit, Some(expectedType))
                 case CaseClassPattern(constr, args) =>
                   // Case class should be compared to scrut
                   // Parameters should be compared to constructor signature and added to locals
                   val constrSignature = table.getConstructor(constr).get
-                  if(constrSignature.retType != expectedType)
-                    error(s"Type error: expected $expectedType, found ${constrSignature.retType}", pattern.position)
+                  lub(constrSignature.retType, expectedType)
                   val ConstrSig(argTypes: List[Type], _, _) = table.getConstructor(constr).get
                   for (i <- args.indices)
                     checkPattern(args(i), argTypes(i))
