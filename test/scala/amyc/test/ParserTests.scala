@@ -16,6 +16,5 @@ class ParserTests extends TestSuite with amyc.MainHelpers {
  
   @Test def testEmptyFile = shouldFail("EmptyFile")
 
-  // TODO: (Optional) Add more tests to test your compiler locally!
 }
 

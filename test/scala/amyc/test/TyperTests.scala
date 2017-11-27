@@ -25,5 +25,4 @@ class TyperTests extends TestSuite {
 
   @Test def testArithmetic = shouldPass("Arithmetic")
 
-  // TODO (optional): Add more tests
 }
