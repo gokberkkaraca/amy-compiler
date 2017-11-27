@@ -137,7 +137,7 @@ object TypeChecker extends Pipeline[(Program, SymbolTable), (Program, SymbolTabl
 
         // Variable
         case Variable(name) =>
-          check(table.getLocal(name).getOrElse(fatal(s"Couldn't find variable $name", pos)))
+          check(table.getLocal(name).get)
 
         // Literals
         case IntLiteral(_) =>
