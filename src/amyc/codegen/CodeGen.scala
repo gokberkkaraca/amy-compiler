@@ -55,19 +55,19 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
         case AmyCall(qname, args) => ???
 
         // Expression sequence
-        case Sequence(e1, e2) => ???
+        case Sequence(e1, e2) => cgExpr(e1) <:> cgExpr(e2)
 
         // Variable definition
         case Let(df, value, body) => ???
 
         // If then else
-        case Ite(cond, thenn, elze) => cgExpr(cond) <:> If_void <:> cgExpr(thenn) <:> Else <:> cgExpr(elze) <:> End
+        case Ite(cond, thenn, elze) => cgExpr(cond) <:> If_i32 <:> cgExpr(thenn) <:> Else <:> cgExpr(elze) <:> End
 
         // Match Case
         case Match(scrut, cases) => ???
 
         // Variable
-        case Variable(name) => ???
+        case Variable(name) => GetLocal(locals(name))
 
         // Literals
         case IntLiteral(value) => Const(value)
