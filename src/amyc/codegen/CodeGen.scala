@@ -3,9 +3,9 @@ package codegen
 
 import analyzer._
 import ast.Identifier
-import ast.SymbolicTreeModule.{Call => AmyCall, Div => AmyDiv, And => AmyAnd, Or => AmyOr, _}
+import ast.SymbolicTreeModule.{And => AmyAnd, Call => AmyCall, Div => AmyDiv, Or => AmyOr, _}
 import utils.{Context, Pipeline}
-import wasm._
+import wasm.{Instructions, _}
 import Instructions._
 import Utils._
 
@@ -61,7 +61,7 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
         case Let(df, value, body) => ???
 
         // If then else
-        case Ite(cond, thenn, elze) => ???
+        case Ite(cond, thenn, elze) => cgExpr(cond) <:> If_void <:> cgExpr(thenn) <:> Else <:> cgExpr(elze) <:> End
 
         // Match Case
         case Match(scrut, cases) => ???
