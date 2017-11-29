@@ -52,13 +52,13 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
       expr match {
 
         // Function or constructor call
-        case AmyCall(qname, args) => ???
+        case AmyCall(qname, args) => args.map(arg => cgExpr(arg)) <:> Call(qname.fullName)
 
         // Expression sequence
         case Sequence(e1, e2) => cgExpr(e1) <:> cgExpr(e2)
 
         // Variable definition
-        case Let(df, value, body) => ???
+        case Let(df, value, body) => cgExpr(value) <:> SetLocal(lh.getFreshLocal())
 
         // If then else
         case Ite(cond, thenn, elze) => cgExpr(cond) <:> If_i32 <:> cgExpr(thenn) <:> Else <:> cgExpr(elze) <:> End
