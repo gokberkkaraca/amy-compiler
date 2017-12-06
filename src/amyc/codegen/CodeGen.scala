@@ -56,7 +56,22 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
           val constrSigOpt = table.getConstructor(qname)
           constrSigOpt match {
             case Some(constrSig) => // It is Constructor call
-              ???
+              val oldMemBoundaryAddress = lh.getFreshLocal()
+              val argsCodeAndIndex = args.map(arg => cgExpr(arg)) zip (1 to args.size)
+              val storeArgFields: List[Code] = argsCodeAndIndex.map(argCode => GetGlobal(Utils.memoryBoundary) <:> Const(4*argCode._2) <:> Add <:> argCode._1 <:> Store)
+
+              GetGlobal(Utils.memoryBoundary) <:>
+              SetLocal(oldMemBoundaryAddress) <:>
+              GetGlobal(Utils.memoryBoundary) <:>
+              Const((args.size + 1) * 4) <:>
+              Add <:>
+              SetGlobal(Utils.memoryBoundary) <:>
+              GetLocal(oldMemBoundaryAddress) <:>
+              Const(constrSig.index) <:>
+              Store <:>
+              storeArgFields <:>
+              GetLocal(oldMemBoundaryAddress)
+
             case None => // Which means the call is not a constructor call, then it is function call
               val funSig = table.getFunction(qname).get
               val fullName = Utils.fullName(funSig.owner, qname)
