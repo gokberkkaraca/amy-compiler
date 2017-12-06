@@ -46,10 +46,6 @@ object Utils {
   def incr(local: Int): Code = {
     GetLocal(local) <:> Const(1) <:> Add <:> SetLocal(local)
   }
-  // Increment memory boundary
-  def incrMemB(local: Int): Code = {
-    GetGlobal(memoryBoundary) <:> Const(1) <:> Add <:> SetGlobal(memoryBoundary)
-  }
 
   // A fresh label name
   def getFreshLabel(name: String = "label") = {
