@@ -58,7 +58,11 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
         case Sequence(e1, e2) => cgExpr(e1) <:> Drop <:> cgExpr(e2)
 
         // Variable definition
-        case Let(df, value, body) => cgExpr(value) <:> SetLocal(lh.getFreshLocal()) <:> cgExpr(body)
+        case Let(df, value, body) => {
+          val ident = df.name
+          val address = lh.getFreshLocal()
+          cgExpr(value) <:> SetLocal(address) <:> cgExpr(body)(locals + (ident -> address), lh)
+        }
 
         // If then else
         case Ite(cond, thenn, elze) => cgExpr(cond) <:> If_i32 <:> cgExpr(thenn) <:> Else <:> cgExpr(elze) <:> End
