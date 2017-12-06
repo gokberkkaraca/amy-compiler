@@ -52,17 +52,25 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
       expr match {
 
         // Function or constructor call
-        case AmyCall(qname, args) => args.map(arg => cgExpr(arg)) <:> Call(qname.fullName)
+        case AmyCall(qname, args) =>
+          val constrSigOpt = table.getConstructor(qname)
+          constrSigOpt match {
+            case Some(constrSig) => // It is Constructor call
+              ???
+            case None => // Which means the call is not a constructor call, then it is function call
+              val funSig = table.getFunction(qname).get
+              val fullName = Utils.fullName(funSig.owner, qname)
+              args.map(arg => cgExpr(arg)) <:> Call(fullName)
+          }
 
         // Expression sequence
         case Sequence(e1, e2) => cgExpr(e1) <:> Drop <:> cgExpr(e2)
 
         // Variable definition
-        case Let(df, value, body) => {
+        case Let(df, value, body) =>
           val ident = df.name
           val address = lh.getFreshLocal()
           cgExpr(value) <:> SetLocal(address) <:> cgExpr(body)(locals + (ident -> address), lh)
-        }
 
         // If then else
         case Ite(cond, thenn, elze) => cgExpr(cond) <:> If_i32 <:> cgExpr(thenn) <:> Else <:> cgExpr(elze) <:> End
