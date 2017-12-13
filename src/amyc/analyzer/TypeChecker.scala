@@ -82,8 +82,7 @@ object TypeChecker extends Pipeline[(Program, SymbolTable), (Program, SymbolTabl
         // Expression sequence
         case Sequence(e1, e2) =>
           tc(e1, None)
-          val seqType = tc(e2, None)
-          check(seqType)
+          tc(e2, expected)
 
         // Variable definition
         case Let(df, value, body) =>
@@ -91,14 +90,12 @@ object TypeChecker extends Pipeline[(Program, SymbolTable), (Program, SymbolTabl
           val valueType = tc(value, None)
           val dfType = df.tpe.tpe
           lub(valueType, dfType)(pos)
-          val bodyType = tc(body, None)
-          check(bodyType)
+          tc(body, expected)
 
         // If then else
         case Ite(cond, thenn, elze) =>
           tc(cond, Some(BooleanType))
-          val exprType = lub(tc(thenn, None), tc(elze, None))(pos)
-          check(exprType)
+          lub(tc(thenn, expected), tc(elze, expected))(pos)
 
         // Match Case
         case Match(scrut, cases) =>
@@ -128,12 +125,11 @@ object TypeChecker extends Pipeline[(Program, SymbolTable), (Program, SymbolTabl
             }
 
             checkPattern(pattern, scrutType)
-            tc(expr, None)
+            tc(expr, expected)
           }
 
-          val caseExprTypeList = cases.map(cse => cse.expr).map(expr => tc(expr, None))
-          val exprType = lub_*(caseExprTypeList)(pos)
-          check(exprType)
+          val caseExprTypeList = cases.map(cse => cse.expr).map(expr => tc(expr, expected))
+          lub_*(caseExprTypeList)(pos)
 
         // Variable
         case Variable(name) =>
@@ -205,7 +201,7 @@ object TypeChecker extends Pipeline[(Program, SymbolTable), (Program, SymbolTabl
         // Represents a computational error; prints its message, then exits
         case Error(msg) =>
           tc(msg, Some(StringType))
-          NothingType
+          expected.getOrElse(NothingType)
 
       }
     }
