@@ -108,13 +108,7 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
                 val binding = lh.getFreshLocal()
                 (SetLocal(binding) <:> Const(1), locals + (name -> binding))
               }
-              case LiteralPattern(lit) =>
-                lit match {
-                  case IntLiteral(value) => (Const(value) <:> Eq, locals)
-                  case BooleanLiteral(value) => (if (value) Const(0) else Const(1) <:> Eq, locals)
-                  case StringLiteral(value) => (mkString(value) <:> Eq, locals)
-                  case UnitLiteral() => (Const(0) <:> Eq, locals)
-                }
+              case LiteralPattern(lit) => (cgExpr(lit) <:> Eq, locals)
               case CaseClassPattern(constr, args) => ???
             }
           }
