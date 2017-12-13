@@ -99,10 +99,33 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
 
           // Calculate the scrut and store it in a local variable
           val scrutCodeVarIndex = lh.getFreshLocal()
-          val calcScrut: Code = cgExpr(scrut) <:> SetLocal(scrutCodeVarIndex)
+          val calcScrut: Code = cgExpr(scrut) <:> SetLocal(scrutCodeVarIndex) <:> GetLocal(scrutCodeVarIndex)
 
-          def matchAndBind()
-          ???
+          def matchAndBind(v: Expr, casePattern: Pattern): (Code, Map[Identifier, Int]) = {
+            casePattern match {
+              case WildcardPattern() => (Drop <:> Const(1), locals)
+              case IdPattern(name) =>  {
+                val binding = lh.getFreshLocal()
+                (SetLocal(binding) <:> Const(1), locals + (name -> binding))
+              }
+              case LiteralPattern(lit) => {
+                lit match {
+                  case IntLiteral(value) => (Const(value) <:> Eq, locals)
+                  case BooleanLiteral(value) => (if (value) Const(0) else Const(1) <:> Eq, locals)
+                  case StringLiteral(value) => (mkString(value) <:> Eq, locals)
+                  case UnitLiteral() => ???
+                }
+              }
+              case CaseClassPattern(constr, args) => ???
+            }
+          }
+
+          val (caseCode, newLocals) = matchAndBind(scrut, cases.head.pat)
+          calcScrut <:> caseCode <:>
+          If_i32 <:> cgExpr(cases.head.expr)(newLocals, lh) <:>
+          Else <:> mkString("Match error!") <:> Call("Std_printString") <:> Unreachable <:>
+          End
+
 
         // Variable
         case Variable(name) => GetLocal(locals(name))
