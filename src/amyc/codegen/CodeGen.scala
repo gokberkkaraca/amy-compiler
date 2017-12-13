@@ -91,7 +91,18 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
         case Ite(cond, thenn, elze) => cgExpr(cond) <:> If_i32 <:> cgExpr(thenn) <:> Else <:> cgExpr(elze) <:> End
 
         // Match Case
-        case Match(scrut, cases) => ???
+        case Match(scrut, cases) =>
+
+          // Find patterns and expressions from cases list
+          val casePatterns = cases.map(cse => cse.pat)
+          val caseExprs = cases.map(cse => cse.expr)
+
+          // Calculate the scrut and store it in a local variable
+          val scrutCodeVarIndex = lh.getFreshLocal()
+          val calcScrut: Code = cgExpr(scrut) <:> SetLocal(scrutCodeVarIndex)
+
+          def matchAndBind()
+          ???
 
         // Variable
         case Variable(name) => GetLocal(locals(name))
@@ -120,7 +131,10 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
         case Neg(e) => Const(0) <:> cgExpr(e) <:> Sub
 
         // Represents a computational error; prints its message, then exits
-        case Error(msg) => ???
+        case Error(msg) =>
+          cgExpr(msg) <:>
+          Call("Std_printString") <:>
+          Instructions.Unreachable
       }
     }
 
