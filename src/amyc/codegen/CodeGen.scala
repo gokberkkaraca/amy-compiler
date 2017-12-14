@@ -104,10 +104,7 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
           def matchAndBind(v: Expr, casePattern: Pattern): (Code, Map[Identifier, Int]) = {
             casePattern match {
               case WildcardPattern() => (Drop <:> Const(1), locals)
-              case IdPattern(name) =>  {
-                val binding = lh.getFreshLocal()
-                (SetLocal(binding) <:> Const(1), locals + (name -> binding))
-              }
+              case IdPattern(name) => val binding = lh.getFreshLocal(); (SetLocal(binding) <:> Const(1), locals + (name -> binding))
               case LiteralPattern(lit) => (cgExpr(lit) <:> Eq, locals)
               case CaseClassPattern(constr, args) => ???
             }
