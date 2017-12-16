@@ -4,9 +4,12 @@ object List extends App {
   case class Cons(h: Int, t: List) extends List
 
   def myFuncMatches(x: Int): Int = {
-    val str: String = "gokberk";
-    str match {
-      case "gokberk" => 5
+    val number: Int = 5;
+    number match {
+      case 7 => 17
+      case 5 => 15
+      case 3 => 13
+      case 1 => 11
     }
   }
 }

@@ -6,7 +6,7 @@ import ast.Identifier
 import ast.SymbolicTreeModule.{And => AmyAnd, Call => AmyCall, Div => AmyDiv, Or => AmyOr, _}
 import utils.{Context, Pipeline}
 import wasm.{Instructions, _}
-import Instructions._
+import Instructions.{GetLocal, _}
 import Utils._
 
 // Generates WebAssembly code for an Amy program
@@ -93,14 +93,6 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
         // Match Case
         case Match(scrut, cases) =>
 
-          // Find patterns and expressions from cases list
-          val casePatterns = cases.map(cse => cse.pat)
-          val caseExprs = cases.map(cse => cse.expr)
-
-          // Calculate the scrut and store it in a local variable
-          val scrutCodeVarIndex = lh.getFreshLocal()
-          val calcScrut: Code = cgExpr(scrut) <:> SetLocal(scrutCodeVarIndex) <:> GetLocal(scrutCodeVarIndex)
-
           def matchAndBind(v: Expr, casePattern: Pattern): (Code, Map[Identifier, Int]) = {
             casePattern match {
               case WildcardPattern() => (Drop <:> Const(1), locals)
@@ -110,11 +102,21 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
             }
           }
 
-          val (caseCode, newLocals) = matchAndBind(scrut, cases.head.pat)
-          calcScrut <:> caseCode <:>
-          If_i32 <:> cgExpr(cases.head.expr)(newLocals, lh) <:>
-          Else <:> mkString("Match error!") <:> Call("Std_printString") <:> Unreachable <:>
-          End
+          // Find patterns and expressions from cases list
+          val casePatterns = cases.map(cse => cse.pat)
+          val caseExprs = cases.map(cse => cse.expr)
+
+          // Calculate the scrut and store it in a local variable
+          val scrutCodeVarIndex = lh.getFreshLocal()
+          val calcScrutCode: Code = cgExpr(scrut) <:> SetLocal(scrutCodeVarIndex)
+
+          val caseCodeLocalsList = cases.map(cse => (cse, matchAndBind(scrut, cse.pat)))
+          val caseCodes = caseCodeLocalsList.map(pair => GetLocal(scrutCodeVarIndex) <:> pair._2._1 <:> If_i32 <:> cgExpr(pair._1.expr)(pair._2._2, lh) <:> Else)
+
+          val matchErrorCode = mkString("Match error!") <:> Call("Std_printString") <:> Unreachable
+          val endCasesCode = cases.map(cse => End)
+
+          calcScrutCode <:> caseCodes <:> matchErrorCode <:> endCasesCode
 
 
         // Variable
