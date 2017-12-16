@@ -98,7 +98,24 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
               case WildcardPattern() => (Drop <:> Const(1), locals)
               case IdPattern(name) => val binding = lh.getFreshLocal(); (SetLocal(binding) <:> Const(1), locals + (name -> binding))
               case LiteralPattern(lit) => (cgExpr(lit) <:> Eq, locals)
-              case CaseClassPattern(constr, args) => ???
+              case CaseClassPattern(constr, args) => {
+                val constrIndex = lh.getFreshLocal()
+                val ConstrSig(argTypes, parent, index) = table.getConstructor(constr).get
+
+                // TODO What should I give as v?
+                val x = args.map(arg => matchAndBind(v, arg))
+                val code: Code = x match {
+                  case Nil => Const(1)
+                  case _ => Const(1) <:> And
+                }
+                val caseClassPatternCode: Code = SetLocal(constrIndex) <:> GetLocal(constrIndex) <:>
+                  Load <:> Const(index) <:> Eq <:>
+                  If_i32 <:> code <:>
+                  Else <:> Const(0) <:> End
+
+                (caseClassPatternCode, locals)
+
+              }
             }
           }
 
