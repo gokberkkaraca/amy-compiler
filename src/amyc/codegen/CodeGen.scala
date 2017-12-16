@@ -102,10 +102,6 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
             }
           }
 
-          // Find patterns and expressions from cases list
-          val casePatterns = cases.map(cse => cse.pat)
-          val caseExprs = cases.map(cse => cse.expr)
-
           // Calculate the scrut and store it in a local variable
           val scrutCodeVarIndex = lh.getFreshLocal()
           val calcScrutCode: Code = cgExpr(scrut) <:> SetLocal(scrutCodeVarIndex)
