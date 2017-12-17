@@ -88,6 +88,8 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
           cgExpr(value) <:> SetLocal(address) <:> cgExpr(body)(locals + (ident -> address), lh)
 
         // If then else
+
+
         case Ite(cond, thenn, elze) => cgExpr(cond) <:> If_i32 <:> cgExpr(thenn) <:> Else <:> cgExpr(elze) <:> End
 
         // Match Case
@@ -103,18 +105,31 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
                 val ConstrSig(argTypes, parent, index) = table.getConstructor(constr).get
 
                 // TODO What should I give as v?
-                val x = args.map(arg => matchAndBind(v, arg))
-                val code: Code = x match {
+                val y = args.map(arg => matchAndBind(v, arg))
+                println(y.map(pair => pair._1))
+                println(y.map(pair => pair._2).foldLeft(Map[Identifier, Int]())((m1: Map[Identifier, Int], m2: Map[Identifier, Int]) => m1 ++ m2))
+                val code: Code = y match {
                   case Nil => Const(1)
-                  case _ => Const(1) <:> And
+                  case x :: xs => x._1
                 }
+
+                val argsWithIndex = args.zipWithIndex.map(pair => (pair._1, pair._2 + 1))
+                val code3 = argsWithIndex.map(pair => {
+                  val newLocal = lh.getFreshLocal();
+                  GetLocal(constrIndex) <:> Const(pair._2*4) <:> Add <:> Load <:> SetLocal(newLocal) <:> Const(1)
+                })
+
+                val code2: Code = if (args.isEmpty) Const(1) else Const(1) <:> And
+                val realCode: Code = if (args.isEmpty) Const(1) else code3 <:> And
+
                 val caseClassPatternCode: Code = SetLocal(constrIndex) <:> GetLocal(constrIndex) <:>
                   Load <:> Const(index) <:> Eq <:>
-                  If_i32 <:> code <:>
+                  If_i32 <:> realCode <:>
                   Else <:> Const(0) <:> End
 
-                (caseClassPatternCode, locals)
-
+                println("Finished case class pattern")
+                val newLocals: Map[Identifier, Int] = locals ++ y.map(pair => pair._2).foldLeft(Map[Identifier, Int]())((m1: Map[Identifier, Int], m2: Map[Identifier, Int]) => m1 ++ m2)
+                (caseClassPatternCode, newLocals)
               }
             }
           }
