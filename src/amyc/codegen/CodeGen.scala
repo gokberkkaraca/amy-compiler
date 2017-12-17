@@ -57,6 +57,7 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
           constrSigOpt match {
             case Some(constrSig) => // It is Constructor call
               val oldMemBoundaryAddress = lh.getFreshLocal()
+              println("inside constr call new local index: " + oldMemBoundaryAddress)
               val argsCodeAndIndex = args.map(arg => cgExpr(arg)) zip (1 to args.size)
               val storeArgFields: List[Code] = argsCodeAndIndex.map(argCode => GetLocal(oldMemBoundaryAddress) <:> Const(4*argCode._2) <:> Add <:> argCode._1 <:> Store)
 
@@ -98,29 +99,23 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
           def matchAndBind(v: Expr, casePattern: Pattern): (Code, Map[Identifier, Int]) = {
             casePattern match {
               case WildcardPattern() => (Drop <:> Const(1), locals)
-              case IdPattern(name) => val binding = lh.getFreshLocal(); (SetLocal(binding) <:> Const(1), locals + (name -> binding))
+              case IdPattern(name) => val binding = lh.getFreshLocal(); println("inside idpattern new local index: " + binding); (SetLocal(binding) <:> Const(1), locals + (name -> binding))
               case LiteralPattern(lit) => (cgExpr(lit) <:> Eq, locals)
               case CaseClassPattern(constr, args) => {
                 val constrIndex = lh.getFreshLocal()
+                println("inside caseclasspattern new local index: " + constrIndex)
                 val ConstrSig(argTypes, parent, index) = table.getConstructor(constr).get
 
-                // TODO What should I give as v?
-                val y = args.map(arg => matchAndBind(v, arg))
-                println(y.map(pair => pair._1))
-                println(y.map(pair => pair._2).foldLeft(Map[Identifier, Int]())((m1: Map[Identifier, Int], m2: Map[Identifier, Int]) => m1 ++ m2))
-                val code: Code = y match {
-                  case Nil => Const(1)
-                  case x :: xs => x._1
-                }
+                val newLocals = args.map(arg => matchAndBind(v, arg)._2)
+                println(newLocals)
 
                 val argsWithIndex = args.zipWithIndex.map(pair => (pair._1, pair._2 + 1))
-                val code3 = argsWithIndex.map(pair => {
-                  val newLocal = lh.getFreshLocal();
-                  GetLocal(constrIndex) <:> Const(pair._2*4) <:> Add <:> Load <:> SetLocal(newLocal) <:> Const(1)
+                val code = argsWithIndex.map(pair => {
+                  val newLocalsList = newLocals.map(elem => elem.toList)
+                  val pairForCurrentArg = newLocalsList(pair._2 - 1)
+                  GetLocal(constrIndex) <:> Const(pair._2*4) <:> Add <:> Load <:> SetLocal(pairForCurrentArg.last._2) <:> Const(1)
                 })
-
-                val code2: Code = if (args.isEmpty) Const(1) else Const(1) <:> And
-                val realCode: Code = if (args.isEmpty) Const(1) else code3 <:> And
+                val realCode: Code = if (args.isEmpty) Const(1) else { if(args.lengthCompare(1) == 0) code else code <:> And}
 
                 val caseClassPatternCode: Code = SetLocal(constrIndex) <:> GetLocal(constrIndex) <:>
                   Load <:> Const(index) <:> Eq <:>
@@ -128,8 +123,7 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
                   Else <:> Const(0) <:> End
 
                 println("Finished case class pattern")
-                val newLocals: Map[Identifier, Int] = locals ++ y.map(pair => pair._2).foldLeft(Map[Identifier, Int]())((m1: Map[Identifier, Int], m2: Map[Identifier, Int]) => m1 ++ m2)
-                (caseClassPatternCode, newLocals)
+                (caseClassPatternCode, locals ++ newLocals.foldLeft(Map[Identifier, Int]())((m1: Map[Identifier, Int], m2: Map[Identifier, Int]) => m1 ++ m2))
               }
             }
           }
