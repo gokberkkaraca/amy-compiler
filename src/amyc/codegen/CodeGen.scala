@@ -58,7 +58,7 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
             case Some(constrSig) => // It is Constructor call
               val oldMemBoundaryAddress = lh.getFreshLocal()
               val argsCodeAndIndex = args.map(arg => cgExpr(arg)) zip (1 to args.size)
-              val storeArgFields: List[Code] = argsCodeAndIndex.map(argCode => GetGlobal(Utils.memoryBoundary) <:> Const(4*argCode._2) <:> Add <:> argCode._1 <:> Store)
+              val storeArgFields: List[Code] = argsCodeAndIndex.map(argCode => GetLocal(oldMemBoundaryAddress) <:> Const(4*argCode._2) <:> Add <:> argCode._1 <:> Store)
 
               GetGlobal(Utils.memoryBoundary) <:>
               SetLocal(oldMemBoundaryAddress) <:>
