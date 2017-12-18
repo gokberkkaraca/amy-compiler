@@ -9,7 +9,7 @@ object L extends App {
   def concat(l1: List, l2: List): List = {
     Cons(3 + 4, Nil()) match {
       case Nil() => l2
-      case Cons(7, t) => Cons(7, concat(t, l2))
+      case Cons(7, t) => Cons(5, Nil())
     }
   }
 }
