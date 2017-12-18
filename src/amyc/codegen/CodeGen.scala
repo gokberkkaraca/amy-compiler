@@ -59,19 +59,19 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
               val oldMemBoundaryAddress = lh.getFreshLocal()
               println("inside constr call new local index: " + oldMemBoundaryAddress)
               val argsCodeAndIndex = args.map(arg => cgExpr(arg)) zip (1 to args.size)
-              val storeArgFields: List[Code] = argsCodeAndIndex.map(argCode => GetLocal(oldMemBoundaryAddress) <:> Const(4*argCode._2) <:> Add <:> argCode._1 <:> Store)
+              val storeArgFields: List[Code] = argsCodeAndIndex.map(argCode => GetLocal(oldMemBoundaryAddress) <:> Const(4 * argCode._2) <:> Add <:> argCode._1 <:> Store)
 
               GetGlobal(Utils.memoryBoundary) <:>
-              SetLocal(oldMemBoundaryAddress) <:>
-              GetGlobal(Utils.memoryBoundary) <:>
-              Const((args.size + 1) * 4) <:>
-              Add <:>
-              SetGlobal(Utils.memoryBoundary) <:>
-              GetLocal(oldMemBoundaryAddress) <:>
-              Const(constrSig.index) <:>
-              Store <:>
-              storeArgFields <:>
-              GetLocal(oldMemBoundaryAddress)
+                SetLocal(oldMemBoundaryAddress) <:>
+                GetGlobal(Utils.memoryBoundary) <:>
+                Const((args.size + 1) * 4) <:>
+                Add <:>
+                SetGlobal(Utils.memoryBoundary) <:>
+                GetLocal(oldMemBoundaryAddress) <:>
+                Const(constrSig.index) <:>
+                Store <:>
+                storeArgFields <:>
+                GetLocal(oldMemBoundaryAddress)
 
             case None => // Which means the call is not a constructor call, then it is function call
               val funSig = table.getFunction(qname).get
@@ -94,35 +94,37 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
         // Match Case
         case Match(scrut, cases) =>
 
-          def matchAndBind(v: Expr, casePattern: Pattern): (Code, Map[Identifier, Int]) = {
+          def matchAndBind(addressPointer: Int, casePattern: Pattern): (Code, Map[Identifier, Int]) = {
             casePattern match {
-              case WildcardPattern() => (Drop <:> Const(1), locals)
+              case WildcardPattern() => (GetLocal(addressPointer) <:> Drop <:> Const(1), locals)
               case IdPattern(name) =>
                 val binding = lh.getFreshLocal()
-                (SetLocal(binding) <:> Const(1), locals + (name -> binding))
-              case LiteralPattern(lit) => (cgExpr(lit) <:> Eq, locals)
-              case CaseClassPattern(constr, args) => {
+                (GetLocal(addressPointer) <:> SetLocal(binding) <:> Const(1), locals + (name -> binding))
+              case LiteralPattern(lit) => (GetLocal(addressPointer) <:> cgExpr(lit) <:> Eq, locals)
+              case CaseClassPattern(constr, args) =>
                 val constrIndex = lh.getFreshLocal()
                 val ConstrSig(argTypes, parent, index) = table.getConstructor(constr).get
 
-                val newLocals = args.map(arg => matchAndBind(v, arg)._2)
-                println(newLocals)
+                val producedCodeForArguments: Code = Drop
 
-                val argsWithIndex = args.zipWithIndex.map(pair => (pair._1, pair._2 + 1))
-                val code = argsWithIndex.map(pair => {
-                  val newLocalsList = newLocals.map(elem => elem.toList)
-                  val pairForCurrentArg = newLocalsList(pair._2 - 1)
-                  GetLocal(constrIndex) <:> Const(pair._2*4) <:> Add <:> Load <:> SetLocal(pairForCurrentArg.last._2) <:> Const(1)
-                })
-                val realCode: Code = if (args.isEmpty) Const(1) else { if(args.lengthCompare(1) == 0) code else code <:> And}
+                val argumentCode: Code = {
+                  if (args.isEmpty) Const(1)
+                  else if (args.lengthCompare(1) == 0) producedCodeForArguments
+                  else producedCodeForArguments <:> And
+                }
 
-                val caseClassPatternCode: Code = SetLocal(constrIndex) <:> GetLocal(constrIndex) <:>
-                  Load <:> Const(index) <:> Eq <:>
-                  If_i32 <:> realCode <:>
-                  Else <:> Const(0) <:> End
+                val caseClassPatternCode: Code =
+                  GetLocal(addressPointer) <:>
+                    SetLocal(constrIndex) <:>
+                    GetLocal(constrIndex) <:>
+                    Load <:>
+                    Const(index) <:>
+                    Eq <:>
+                    If_i32 <:>
+                    argumentCode <:>
+                    Else <:> Const(0) <:> End
 
-                (caseClassPatternCode, locals ++ newLocals.foldLeft(Map[Identifier, Int]())((m1: Map[Identifier, Int], m2: Map[Identifier, Int]) => m1 ++ m2))
-              }
+                (caseClassPatternCode, locals)
             }
           }
 
@@ -130,13 +132,16 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
           val scrutCodeVarIndex = lh.getFreshLocal()
           val scrutCode: Code = cgExpr(scrut) <:> SetLocal(scrutCodeVarIndex)
 
-          val caseCodeLocalsList = cases.map(cse => (cse, matchAndBind(scrut, cse.pat)))
-          val caseCodes = caseCodeLocalsList.map(pair => GetLocal(scrutCodeVarIndex) <:> pair._2._1 <:> If_i32 <:> cgExpr(pair._1.expr)(pair._2._2, lh) <:> Else)
-
           val matchErrorCode = mkString("Match error!") <:> Call("Std_printString") <:> Unreachable
           val endCasesCode = cases.map(cse => End)
 
-          calcScrutCode <:> caseCodes <:> matchErrorCode <:> endCasesCode
+          val caseCodeAndMappingList: List[(MatchCase, (Code, Map[Identifier, Int]))] = cases.map(cse => (cse, matchAndBind(scrutCodeVarIndex, cse.pat)))
+
+          val caseCodes = caseCodeAndMappingList.map(pair => pair._2._1 <:> If_i32 <:>
+            // TODO Remove this comment => cgExpr(pair._1.expr)(pair._2._2, lh) <:>
+            Else)
+
+          scrutCode <:> caseCodes <:> matchErrorCode <:> endCasesCode
 
 
         // Variable
@@ -168,8 +173,8 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
         // Represents a computational error; prints its message, then exits
         case Error(msg) =>
           cgExpr(msg) <:>
-          Call("Std_printString") <:>
-          Instructions.Unreachable
+            Call("Std_printString") <:>
+            Instructions.Unreachable
       }
     }
 
