@@ -1,15 +1,22 @@
 object L extends App {
 
   abstract class List
-
   case class Nil() extends List
-
   case class Cons(h: Int, t: List) extends List
 
-  def concat(l1: List, l2: List): List = {
-    Cons(3 + 4, Nil()) match {
-      case Nil() => l2
-      case Cons(7, t) => Cons(5, Nil())
+  abstract class LPair
+  case class LP(l1: List, l2: List) extends LPair
+
+  def split(l: List): LPair = {
+    l match {
+      case Cons(h1, Cons(h2, t)) =>
+        val rec: LPair = split(t);
+        rec match {
+          case LP(rec1, rec2) =>
+            LP(Cons(h1, rec1), Cons(h2, rec2))
+        }
+      case _ =>
+        LP(l, Nil())
     }
   }
 }

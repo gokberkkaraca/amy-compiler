@@ -57,7 +57,6 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
           constrSigOpt match {
             case Some(constrSig) => // It is Constructor call
               val oldMemBoundaryAddress = lh.getFreshLocal()
-              println("inside constr call new local index: " + oldMemBoundaryAddress)
               val argsCodeAndIndex = args.map(arg => cgExpr(arg)) zip (1 to args.size)
               val storeArgFields: List[Code] = argsCodeAndIndex.map(argCode => GetLocal(oldMemBoundaryAddress) <:> Const(4 * argCode._2) <:> Add <:> argCode._1 <:> Store)
 
@@ -112,6 +111,8 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
                 val argsAndIndexes = args.zipWithIndex
                 val producedCodeForArgumentsAndNewLocals =
                   argsAndIndexes.map(pair => matchAndBind(GetLocal(constrIndex) <:> Utils.adtField(pair._2) <:> Load, pair._1))
+                producedCodeForArgumentsAndNewLocals.map(_._1) foreach println
+
 
                 val argumentCode: Code = {
                   if (args.isEmpty) Const(1)
@@ -120,7 +121,7 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
                 }
 
                 val caseClassPatternCode: Code =
-                  GetLocal(scrutCodeVarIndex) <:> // TODO Check this line
+                  expectedResultCode <:> // TODO Check this line
                     SetLocal(constrIndex) <:>
                     GetLocal(constrIndex) <:>
                     Load <:>
