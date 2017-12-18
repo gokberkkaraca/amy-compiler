@@ -89,8 +89,6 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
           cgExpr(value) <:> SetLocal(address) <:> cgExpr(body)(locals + (ident -> address), lh)
 
         // If then else
-
-
         case Ite(cond, thenn, elze) => cgExpr(cond) <:> If_i32 <:> cgExpr(thenn) <:> Else <:> cgExpr(elze) <:> End
 
         // Match Case
@@ -99,11 +97,12 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
           def matchAndBind(v: Expr, casePattern: Pattern): (Code, Map[Identifier, Int]) = {
             casePattern match {
               case WildcardPattern() => (Drop <:> Const(1), locals)
-              case IdPattern(name) => val binding = lh.getFreshLocal(); println("inside idpattern new local index: " + binding); (SetLocal(binding) <:> Const(1), locals + (name -> binding))
+              case IdPattern(name) =>
+                val binding = lh.getFreshLocal()
+                (SetLocal(binding) <:> Const(1), locals + (name -> binding))
               case LiteralPattern(lit) => (cgExpr(lit) <:> Eq, locals)
               case CaseClassPattern(constr, args) => {
                 val constrIndex = lh.getFreshLocal()
-                println("inside caseclasspattern new local index: " + constrIndex)
                 val ConstrSig(argTypes, parent, index) = table.getConstructor(constr).get
 
                 val newLocals = args.map(arg => matchAndBind(v, arg)._2)
@@ -122,7 +121,6 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
                   If_i32 <:> realCode <:>
                   Else <:> Const(0) <:> End
 
-                println("Finished case class pattern")
                 (caseClassPatternCode, locals ++ newLocals.foldLeft(Map[Identifier, Int]())((m1: Map[Identifier, Int], m2: Map[Identifier, Int]) => m1 ++ m2))
               }
             }
@@ -130,7 +128,7 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
 
           // Calculate the scrut and store it in a local variable
           val scrutCodeVarIndex = lh.getFreshLocal()
-          val calcScrutCode: Code = cgExpr(scrut) <:> SetLocal(scrutCodeVarIndex)
+          val scrutCode: Code = cgExpr(scrut) <:> SetLocal(scrutCodeVarIndex)
 
           val caseCodeLocalsList = cases.map(cse => (cse, matchAndBind(scrut, cse.pat)))
           val caseCodes = caseCodeLocalsList.map(pair => GetLocal(scrutCodeVarIndex) <:> pair._2._1 <:> If_i32 <:> cgExpr(pair._1.expr)(pair._2._2, lh) <:> Else)

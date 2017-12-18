@@ -1,5 +1,5 @@
 object TestLists extends App {
   val l: L.List = L.Cons(5, L.Cons(-5, L.Cons(-1, L.Cons(0, L.Cons(10, L.Nil())))));
   Std.printInt(L.sum(l));
-  Std.printString(L.toString(L.mergeSort(l)))
+  Std.printInt(L.length(L.mergeSort(l)))
 }
