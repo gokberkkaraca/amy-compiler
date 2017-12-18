@@ -165,8 +165,8 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
         case Mod(lhs, rhs) => cgExpr(lhs) <:> cgExpr(rhs) <:> Rem
         case LessThan(lhs, rhs) => cgExpr(lhs) <:> cgExpr(rhs) <:> Lt_s
         case LessEquals(lhs, rhs) => cgExpr(lhs) <:> cgExpr(rhs) <:> Le_s
-        case AmyAnd(lhs, rhs) => cgExpr(lhs) <:> cgExpr(rhs) <:> And
-        case AmyOr(lhs, rhs) => cgExpr(lhs) <:> cgExpr(rhs) <:> Or
+        case AmyAnd(lhs, rhs) => cgExpr(lhs) <:> If_i32 <:> cgExpr(rhs) <:> Else <:> Const(0) <:> End
+        case AmyOr(lhs, rhs) => cgExpr(lhs) <:> If_i32 <:> Const(1) <:> Else <:> cgExpr(rhs) <:> End
         case Equals(lhs, rhs) => cgExpr(lhs) <:> cgExpr(rhs) <:> Eq
         case Concat(lhs, rhs) => cgExpr(lhs) <:> cgExpr(rhs) <:> Call(concatImpl.name)
 

@@ -7,16 +7,10 @@ object L extends App {
   abstract class LPair
   case class LP(l1: List, l2: List) extends LPair
 
-  def split(l: List): LPair = {
-    l match {
-      case Cons(h1, Cons(h2, t)) =>
-        val rec: LPair = split(t);
-        rec match {
-          case LP(rec1, rec2) =>
-            LP(Cons(h1, rec1), Cons(h2, rec2))
-        }
-      case _ =>
-        LP(l, Nil())
-    }
-  }
+  def contains(l: List, elem: Int): Boolean = { l match {
+    case Nil() =>
+      false
+    case Cons(h, t) =>
+      h == elem || contains(t, elem)
+  }}
 }
