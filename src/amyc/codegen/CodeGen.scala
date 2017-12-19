@@ -111,17 +111,16 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
                 val argsAndIndexes = args.zipWithIndex
                 val producedCodeForArgumentsAndNewLocals =
                   argsAndIndexes.map(pair => matchAndBind(GetLocal(constrIndex) <:> Utils.adtField(pair._2) <:> Load, pair._1))
-                producedCodeForArgumentsAndNewLocals.map(_._1) foreach println
 
 
                 val argumentCode: Code = {
                   if (args.isEmpty) Const(1)
                   else if (args.lengthCompare(1) == 0) producedCodeForArgumentsAndNewLocals.map(_._1)
-                  else producedCodeForArgumentsAndNewLocals.map(_._1) <:> And
+                  else producedCodeForArgumentsAndNewLocals.map(_._1) <:> args.tail.map(arg => And)
                 }
 
                 val caseClassPatternCode: Code =
-                  expectedResultCode <:> // TODO Check this line
+                  expectedResultCode <:>
                     SetLocal(constrIndex) <:>
                     GetLocal(constrIndex) <:>
                     Load <:>
