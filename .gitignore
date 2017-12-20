@@ -9,4 +9,7 @@ compiler/**/*.js
 compiler/node_modules
 # Vim
 *.swp
-
+#idea
+.idea/
+#Amy Reference Compiler
+amyc_2.12-1.1.jar
