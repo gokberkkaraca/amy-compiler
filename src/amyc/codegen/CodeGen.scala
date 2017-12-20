@@ -58,24 +58,26 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
             case Some(constrSig) => // It is Constructor call
               val oldMemBoundaryAddress = lh.getFreshLocal()
               val argsCodeAndIndex = args.map(arg => cgExpr(arg)) zip (1 to args.size)
-              val storeArgFields: List[Code] = argsCodeAndIndex.map(argCode => GetLocal(oldMemBoundaryAddress) <:> Const(4 * argCode._2) <:> Add <:> argCode._1 <:> Store)
+              val storeArgFieldsCode: List[Code] = argsCodeAndIndex.map(argCode => GetLocal(oldMemBoundaryAddress) <:> Const(4 * argCode._2) <:> Add <:> argCode._1 <:> Store)
 
               GetGlobal(Utils.memoryBoundary) <:>
-                SetLocal(oldMemBoundaryAddress) <:>
-                GetGlobal(Utils.memoryBoundary) <:>
-                Const((args.size + 1) * 4) <:>
-                Add <:>
-                SetGlobal(Utils.memoryBoundary) <:>
-                GetLocal(oldMemBoundaryAddress) <:>
-                Const(constrSig.index) <:>
-                Store <:>
-                storeArgFields <:>
-                GetLocal(oldMemBoundaryAddress)
+              SetLocal(oldMemBoundaryAddress) <:>
+              GetGlobal(Utils.memoryBoundary) <:>
+              Const((args.size + 1) * 4) <:>
+              Add <:>
+              SetGlobal(Utils.memoryBoundary) <:>
+              GetLocal(oldMemBoundaryAddress) <:>
+              Const(constrSig.index) <:>
+              Store <:>
+              storeArgFieldsCode <:>
+              GetLocal(oldMemBoundaryAddress)
 
             case None => // Which means the call is not a constructor call, then it is function call
               val funSig = table.getFunction(qname).get
               val fullName = Utils.fullName(funSig.owner, qname)
-              args.map(arg => cgExpr(arg)) <:> Call(fullName)
+              val prepareArgsCode = args.map(arg => cgExpr(arg))
+
+              prepareArgsCode <:> Call(fullName)
           }
 
         // Expression sequence
@@ -85,7 +87,9 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
         case Let(df, value, body) =>
           val ident = df.name
           val address = lh.getFreshLocal()
-          cgExpr(value) <:> SetLocal(address) <:> cgExpr(body)(locals + (ident -> address), lh)
+          val bodyCode = cgExpr(body)(locals + (ident -> address), lh)
+
+          cgExpr(value) <:> SetLocal(address) <:> bodyCode
 
         // If then else
         case Ite(cond, thenn, elze) => cgExpr(cond) <:> If_i32 <:> cgExpr(thenn) <:> Else <:> cgExpr(elze) <:> End
@@ -105,12 +109,12 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
                 (expectedResultCode <:> SetLocal(binding) <:> Const(1), locals + (name -> binding))
               case LiteralPattern(lit) => (expectedResultCode <:> cgExpr(lit) <:> Eq, locals)
               case CaseClassPattern(constr, args) =>
-                val constrIndex = lh.getFreshLocal()
-                val ConstrSig(argTypes, parent, index) = table.getConstructor(constr).get
+                val constructorIndex = lh.getFreshLocal()
+                val ConstrSig(_, _, index) = table.getConstructor(constr).get
 
                 val argsAndIndexes = args.zipWithIndex
                 val producedCodeForArgumentsAndNewLocals =
-                  argsAndIndexes.map(pair => matchAndBind(GetLocal(constrIndex) <:> Utils.adtField(pair._2) <:> Load, pair._1))
+                  argsAndIndexes.map(pair => matchAndBind(GetLocal(constructorIndex) <:> Utils.adtField(pair._2) <:> Load, pair._1))
 
 
                 val argumentCode: Code = {
@@ -121,16 +125,18 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
 
                 val caseClassPatternCode: Code =
                   expectedResultCode <:>
-                    SetLocal(constrIndex) <:>
-                    GetLocal(constrIndex) <:>
-                    Load <:>
-                    Const(index) <:>
-                    Eq <:>
-                    If_i32 <:>
-                    argumentCode <:>
-                    Else <:> Const(0) <:> End
+                  SetLocal(constructorIndex) <:>
+                  GetLocal(constructorIndex) <:>
+                  Load <:>
+                  Const(index) <:>
+                  Eq <:>
+                  If_i32 <:>
+                  argumentCode <:>
+                  Else <:> Const(0) <:> End
 
-                val mergedLocals = locals ++ producedCodeForArgumentsAndNewLocals.map(_._2).foldLeft(Map[Identifier, Int]())((m1: Map[Identifier, Int], m2: Map[Identifier, Int]) => m1 ++ m2)
+                val mergedLocals = locals ++
+                  producedCodeForArgumentsAndNewLocals.map(_._2).foldLeft(Map[Identifier, Int]())((m1: Map[Identifier, Int], m2: Map[Identifier, Int]) => m1 ++ m2)
+
                 (caseClassPatternCode, mergedLocals)
             }
           }
@@ -140,9 +146,7 @@ object CodeGen extends Pipeline[(Program, SymbolTable), Module] {
 
           val caseCodeAndMappingList: List[(MatchCase, (Code, Map[Identifier, Int]))] = cases.map(cse => (cse, matchAndBind(GetLocal(scrutCodeVarIndex), cse.pat)))
 
-          val caseCodes = caseCodeAndMappingList.map(pair => pair._2._1 <:> If_i32 <:>
-            cgExpr(pair._1.expr)(pair._2._2, lh) <:>
-            Else)
+          val caseCodes = caseCodeAndMappingList.map(pair => pair._2._1 <:> If_i32 <:> cgExpr(pair._1.expr)(pair._2._2, lh) <:> Else)
 
           scrutCode <:> caseCodes <:> matchErrorCode <:> endCasesCode
 
