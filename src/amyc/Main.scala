@@ -1,7 +1,7 @@
 package amyc
 
 import utils._
-import interpreter.Interpreter
+import parsing._
 
 import java.io.File
 
@@ -12,7 +12,7 @@ object Main {
 
   def main(args: Array[String]): Unit = {
     val ctx = parseArgs(args)
-    val pipeline = Frontend andThen Interpreter
+    val pipeline = Lexer andThen DisplayTokens
 
     val files = ctx.files.map(new File(_))
 
@@ -26,7 +26,7 @@ object Main {
       pipeline.run(ctx)(files)
       ctx.reporter.terminateIfErrors()
     } catch {
-      case MscFatalError(_) =>
+      case AmycFatalError(_) =>
         sys.exit(1)
     }
   }
