@@ -40,5 +40,4 @@ class NameAnalyzerTests extends TestSuite {
 
   @Test def testArgumentNumber1 = shouldFail("ArgumentNumber1")
 
-  // TODO (Optional): Write more tests to test your compiler locally!
 }
