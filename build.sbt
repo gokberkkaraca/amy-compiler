@@ -14,5 +14,7 @@ scalaSource in Test := baseDirectory.value / "test" / "scala"
 
 libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test"
 
-testOptions += Tests.Argument(TestFrameworks.JUnit, "-q", "-v")
+parallelExecution in Test := false
+
+testOptions += Tests.Argument(TestFrameworks.JUnit, "-v")
 

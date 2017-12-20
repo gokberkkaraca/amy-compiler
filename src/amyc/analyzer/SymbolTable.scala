@@ -84,6 +84,7 @@ class SymbolTable {
   }
   def getFunction(symbol: Identifier) = functions.get(symbol)
 
+  // These will be used during type checking
   def addLocal(symbol: Identifier, tpe: Type) = locals += symbol -> tpe
   def getLocal(symbol: Identifier) = locals.get(symbol)
 
