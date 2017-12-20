@@ -13,6 +13,4 @@ class LexerTests extends TestSuite {
   @Test def testKeywords = shouldOutput("Keywords")
 
   @Test def testSingleAmp = shouldFail("SingleAmp")
-
-  // TODO (optionally): Add your own tests
 }

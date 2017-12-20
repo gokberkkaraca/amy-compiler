@@ -56,7 +56,7 @@ class Reporter {
 
       val lines = getLines(pos.file)
 
-      if (pos.line-1 < lines.size) {
+      if (pos.line > 0 && pos.line-1 < lines.size) {
         err(lines(pos.line-1))
         err(" "*(pos.col - 1)+"^")
       } else {

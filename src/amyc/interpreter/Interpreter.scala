@@ -62,7 +62,6 @@ object Interpreter extends Pipeline[(Program, SymbolTable), Unit] {
     }
 
     // Interprets a function, using evaluations for local variables contained in 'locals'
-    // TODO: Complete all missing cases. Look at the given ones for guidance.
     def interpret(expr: Expr)(implicit locals: Map[Identifier, Value]): Value = {
       expr match {
         case Variable(name) => 

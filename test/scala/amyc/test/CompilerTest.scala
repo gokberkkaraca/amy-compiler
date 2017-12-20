@@ -2,7 +2,6 @@ package amyc.test
 
 import amyc.utils._
 import java.io.File
-import java.security.PrivilegedActionException
 import org.junit.Assert.fail
 
 class CompilerTest extends SandboxedTest {
@@ -38,6 +37,7 @@ class CompilerTest extends SandboxedTest {
       sb.append(filteredOutput)
       sb.append("\n\nExpected output: \n")
       sb.append(filteredExpected)
+      sb.append("\n")
       fail(sb.toString)
     }
   }
@@ -53,13 +53,22 @@ class CompilerTest extends SandboxedTest {
       val expected = scala.io.Source.fromFile(new File(expectedFile)).mkString
       assertEqual(output, expected)
     } catch {
-      case e: PrivilegedActionException =>
-        e.getException match {
-          case AmycFatalError(msg) =>
-            fail(s"\n  $msg\n")
-          case other =>
-            throw other
-        }
+      // We only want to catch AmyFatalError gracefully, the rest can propagate
+      case AmycFatalError(msg) =>
+        fail(s"\n  $msg\n")
+    }
+  }
+
+  protected def demandPass(
+    pipeline: Pipeline[List[File], Unit],
+    compiledFiles: List[String],
+    input: String = ""
+  ) = {
+    try {
+      runPipelineRedirected(pipeline, compiledFiles, input)
+    } catch {
+      case AmycFatalError(msg) =>
+        fail(s"\n  $msg\n")
     }
   }
 
@@ -72,14 +81,8 @@ class CompilerTest extends SandboxedTest {
       runPipelineRedirected(pipeline, compiledFiles, input)
       fail("Test should fail but it passed!")
     } catch {
-      case e: PrivilegedActionException =>
-        e.getException match {
-          case AmycFatalError(msg) =>
-            // Ok, this is what we wanted
-          case other =>
-            // An error of an another kind should not be happening
-            throw other
-        }
+      case AmycFatalError(_) =>
+      // Ok, this is what we wanted. Other exceptions should propagate though
     }
 
   }

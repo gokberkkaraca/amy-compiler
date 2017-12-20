@@ -8,34 +8,33 @@ abstract class Document {
   def print: String = {
     val sb = new StringBuffer()
 
-    def rec(d: Document)(implicit ind: Int): Unit = d match {
+    def rec(d: Document)(implicit ind: Int, first: Boolean): Unit = d match {
       case Raw(s) =>
-        sb append ("  " * ind)
+        if (first && s.nonEmpty) sb append ("  " * ind)
         sb append s
       case Indented(doc) =>
-        rec(doc)(ind + 1)
+        rec(doc)(ind + 1, first)
       case Unindented(doc) =>
-        rec(doc)(ind - 1)
+        assume(ind > 0)
+        rec(doc)(ind - 1, first)
       case Lined(Nil, _) => // skip
       case Lined(docs, sep) =>
-        sb append ("  " * ind)
-        // Hack: We don't want to reprint the indentation, so we pass 0
-        docs.init foreach { d =>
-          rec(d)(0)
-          rec(sep)(0)
+        rec(docs.head)
+        docs.tail foreach { doc =>
+          rec(sep)(ind, false)
+          rec(doc)(ind, false)
         }
-        rec(docs.last)(0)
       case Stacked(Nil, _) => // skip
       case Stacked(docs, emptyLines) =>
-        docs.init foreach { d =>
-          rec(d)
+        rec(docs.head)
+        docs.tail foreach { doc =>
           sb append "\n"
           if (emptyLines) sb append "\n"
+          rec(doc)(ind, true)
         }
-        rec(docs.last)
     }
 
-    rec(this)(0)
+    rec(this)(0, true)
     sb.toString
   }
 }
